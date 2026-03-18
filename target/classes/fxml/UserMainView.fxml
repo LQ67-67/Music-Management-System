@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<BorderPane xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.example.musiclibrary.controller.UserMainController"
+            stylesheets="@../css/app.css">
+
+    <top>
+        <HBox spacing="10">
+            <padding>
+                <Insets top="10" right="10" bottom="10" left="10"/>
+            </padding>
+            <children>
+                <Label text="Music Library - User" styleClass="title-label"/>
+                <Label fx:id="welcomeLabel"/>
+            </children>
+        </HBox>
+    </top>
+
+    <center>
+        <VBox spacing="10">
+            <padding>
+                <Insets top="10" right="10" bottom="10" left="10"/>
+            </padding>
+            <children>
+                <HBox spacing="5">
+                    <children>
+                        <Label text="Search:"/>
+                        <TextField fx:id="searchField" promptText="Title or artist"/>
+                        <Button text="Search" onAction="#handleSearch"/>
+                    </children>
+                </HBox>
+
+                <TableView fx:id="trackTable" prefHeight="250">
+                    <columns>
+                        <TableColumn fx:id="colTitle" text="Title" prefWidth="150"/>
+                        <TableColumn fx:id="colArtist" text="Artist" prefWidth="120"/>
+                        <TableColumn fx:id="colGenre" text="Genre" prefWidth="100"/>
+                        <TableColumn fx:id="colPrice" text="Price" prefWidth="80"/>
+                        <TableColumn fx:id="colStock" text="Stock" prefWidth="80"/>
+                    </columns>
+                </TableView>
+
+                <HBox spacing="10">
+                    <children>
+                        <Button text="Add to Cart" onAction="#handleAddToCart"/>
+                        <Button text="View Cart / Orders" onAction="#handleViewOrders"/>
+                    </children>
+                </HBox>
+            </children>
+        </VBox>
+    </center>
+</BorderPane>
+

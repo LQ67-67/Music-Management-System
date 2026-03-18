@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Tab?>
+<?import javafx.scene.control.TabPane?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+
+<BorderPane xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.example.musiclibrary.controller.AdminMainController"
+            stylesheets="@../css/app.css">
+
+    <top>
+        <HBox spacing="10" padding="10">
+            <children>
+                <Label text="Music Library - Admin" styleClass="title-label"/>
+                <Label fx:id="welcomeLabel"/>
+            </children>
+        </HBox>
+    </top>
+
+    <center>
+        <TabPane fx:id="tabPane">
+            <tabs>
+                <Tab text="Tracks" closable="false"/>
+                <Tab text="Customers" closable="false"/>
+                <Tab text="Reports" closable="false"/>
+            </tabs>
+        </TabPane>
+    </center>
+</BorderPane>
+
