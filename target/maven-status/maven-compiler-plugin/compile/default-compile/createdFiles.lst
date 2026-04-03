@@ -5,6 +5,7 @@ com/example/musiclibrary/model/OrderItem.class
 com/example/musiclibrary/db/DBConnectionManager.class
 com/example/musiclibrary/controller/LoginController.class
 com/example/musiclibrary/service/OrderService.class
+com/example/musiclibrary/dao/CustomerDao.class
 com/example/musiclibrary/dao/UserDao.class
 com/example/musiclibrary/dao/TrackDao.class
 com/example/musiclibrary/model/Order.class

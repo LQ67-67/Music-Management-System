@@ -13,10 +13,15 @@
 <BorderPane xmlns="http://javafx.com/javafx"
             xmlns:fx="http://javafx.com/fxml"
             fx:controller="com.example.musiclibrary.controller.OrderManagementController"
-            stylesheets="@../css/app.css">
+            stylesheets="@../css/app.css"
+            prefWidth="920.0"
+            prefHeight="640.0">
 
     <top>
-        <HBox spacing="10" padding="10">
+        <HBox spacing="10">
+            <padding>
+                <Insets top="10" right="10" bottom="10" left="10"/>
+            </padding>
             <children>
                 <Label text="My Orders" styleClass="title-label"/>
             </children>
@@ -24,9 +29,12 @@
     </top>
 
     <center>
-        <VBox spacing="10" padding="10">
+        <VBox spacing="10">
+            <padding>
+                <Insets top="10" right="10" bottom="10" left="10"/>
+            </padding>
             <children>
-                <TableView fx:id="orderTable" prefHeight="200">
+                <TableView fx:id="orderTable" prefHeight="250">
                     <columns>
                         <TableColumn fx:id="colOrderId" text="Order ID" prefWidth="80"/>
                         <TableColumn fx:id="colOrderDate" text="Date" prefWidth="140"/>
@@ -35,7 +43,7 @@
                     </columns>
                 </TableView>
 
-                <TableView fx:id="orderItemTable" prefHeight="200">
+                <TableView fx:id="orderItemTable" prefHeight="250">
                     <columns>
                         <TableColumn fx:id="colTrack" text="Track" prefWidth="200"/>
                         <TableColumn fx:id="colQuantity" text="Qty" prefWidth="60"/>

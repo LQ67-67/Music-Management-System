@@ -1,9 +1,7 @@
 -- Music Library Management System - MySQL Schema
 -- Coursework: COMP1322 Sem2 2025/2026
 
--- 注意：请根据你本地 MySQL 设置，先创建数据库：
 -- CREATE DATABASE music_library CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
--- 然后在该数据库中执行本脚本。
 
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
@@ -93,7 +91,6 @@ INSERT INTO customers (name, email, phone, city) VALUES
 ('Bob',   'bob@example.com',   '013-9876543', 'Penang');
 
 INSERT INTO tracks (title, artist, album, genre, price, stock_qty) VALUES
-('Song A', 'Artist A', 'Album A', 'Pop',  3.50, 100),
-('Song B', 'Artist B', 'Album B', 'Rock', 4.20, 80),
-('Song C', 'Artist C', 'Album C', 'Jazz', 5.00, 50);
-
+('明日、夕暮れまで(水星领航员)', '北川勝利', 'Album A - 《ARIA The OVA ~ARIETTA~》', 'Anime',  3.50, 100),
+('Nagisa', 'Key Sound Team', 'CLANNAD ORIGINAL SOUNDTRACK', 'Anime', 4.20, 80),
+('風を待った日(等风的日子)', 'Key Sounds Label', 'Kanon', 'Anime', 5.00, 50);

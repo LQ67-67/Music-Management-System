@@ -13,7 +13,9 @@
 <BorderPane xmlns="http://javafx.com/javafx"
             xmlns:fx="http://javafx.com/fxml"
             fx:controller="com.example.musiclibrary.controller.UserMainController"
-            stylesheets="@../css/app.css">
+            stylesheets="@../css/app.css"
+            prefWidth="1050.0"
+            prefHeight="720.0">
 
     <top>
         <HBox spacing="10">
@@ -41,7 +43,7 @@
                     </children>
                 </HBox>
 
-                <TableView fx:id="trackTable" prefHeight="250">
+                <TableView fx:id="trackTable" prefHeight="520">
                     <columns>
                         <TableColumn fx:id="colTitle" text="Title" prefWidth="150"/>
                         <TableColumn fx:id="colArtist" text="Artist" prefWidth="120"/>

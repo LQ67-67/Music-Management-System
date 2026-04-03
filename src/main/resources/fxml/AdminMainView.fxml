@@ -10,10 +10,15 @@
 <BorderPane xmlns="http://javafx.com/javafx"
             xmlns:fx="http://javafx.com/fxml"
             fx:controller="com.example.musiclibrary.controller.AdminMainController"
-            stylesheets="@../css/app.css">
+            stylesheets="@../css/app.css"
+            prefWidth="1100.0"
+            prefHeight="760.0">
 
     <top>
-        <HBox spacing="10" padding="10">
+        <HBox spacing="10">
+            <padding>
+                <Insets top="10" right="10" bottom="10" left="10"/>
+            </padding>
             <children>
                 <Label text="Music Library - Admin" styleClass="title-label"/>
                 <Label fx:id="welcomeLabel"/>
@@ -24,11 +29,10 @@
     <center>
         <TabPane fx:id="tabPane">
             <tabs>
-                <Tab text="Tracks" closable="false"/>
-                <Tab text="Customers" closable="false"/>
-                <Tab text="Reports" closable="false"/>
+                <Tab fx:id="tracksTab" text="Tracks" closable="false"/>
+                <Tab fx:id="customersTab" text="Customers" closable="false"/>
+                <Tab fx:id="reportsTab" text="Reports" closable="false"/>
             </tabs>
         </TabPane>
     </center>
 </BorderPane>
-

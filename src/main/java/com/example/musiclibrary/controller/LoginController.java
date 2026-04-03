@@ -13,6 +13,7 @@ import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import javafx.stage.Stage;
 
+import java.net.URL;
 import java.sql.SQLException;
 
 public class LoginController {
@@ -51,20 +52,29 @@ public class LoginController {
 
             Stage stage = (Stage) usernameField.getScene().getWindow();
             if (SessionManager.isAdmin()) {
-                switchScene(stage, "/fxml/AdminMainView.fxml");
+                switchScene(stage, "/fxml/AdminMainView.fxml", 1100, 760);
             } else {
-                switchScene(stage, "/fxml/UserMainView.fxml");
+                switchScene(stage, "/fxml/UserMainView.fxml", 1050, 720);
             }
         } catch (SQLException e) {
             errorLabel.setText("Database error: " + e.getMessage());
         }
     }
 
-    private void switchScene(Stage stage, String fxmlPath) {
+    private void switchScene(Stage stage, String fxmlPath, double width, double height) {
         try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource(fxmlPath));
-            Scene scene = new Scene(loader.load());
+            URL fxmlResource = getClass().getResource(fxmlPath);
+            if (fxmlResource == null) {
+                errorLabel.setText("Main window resource not found: " + fxmlPath);
+                return;
+            }
+
+            FXMLLoader loader = new FXMLLoader(fxmlResource);
+            Scene scene = new Scene(loader.load(), width, height);
             stage.setScene(scene);
+            stage.setMinWidth(900);
+            stage.setMinHeight(620);
+            stage.setResizable(true);
             stage.centerOnScreen();
         } catch (Exception e) {
             e.printStackTrace();
@@ -73,4 +83,3 @@ public class LoginController {
         }
     }
 }
-

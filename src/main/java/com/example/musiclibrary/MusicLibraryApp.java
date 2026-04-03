@@ -12,10 +12,13 @@ public class MusicLibraryApp extends Application {
         FXMLLoader loader = new FXMLLoader(
                 getClass().getResource("/fxml/LoginView.fxml")
         );
-        Scene scene = new Scene(loader.load());
+        Scene scene = new Scene(loader.load(), 500, 340);
         primaryStage.setTitle("Music Library Management System");
         primaryStage.setScene(scene);
-        primaryStage.setResizable(false);
+        primaryStage.getIcons().add(new javafx.scene.image.Image("/images/music.png")); // set the icon of the stage
+        primaryStage.setMinWidth(420);
+        primaryStage.setMinHeight(280);
+        primaryStage.setResizable(true);
         primaryStage.show();
     }
 

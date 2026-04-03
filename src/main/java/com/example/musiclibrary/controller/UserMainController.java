@@ -18,7 +18,6 @@ import javafx.scene.control.TextField;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.sql.SQLException;
 
@@ -121,18 +120,29 @@ public class UserMainController {
     private void handleViewOrders() {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/OrderManagementView.fxml"));
-            Scene scene = new Scene(loader.load());
+            Scene scene = new Scene(loader.load(), 920, 640);
             Stage stage = new Stage();
             stage.setTitle("My Orders");
             stage.initModality(Modality.WINDOW_MODAL);
             stage.initOwner(trackTable.getScene().getWindow());
             stage.setScene(scene);
+            stage.setMinWidth(820);
+            stage.setMinHeight(560);
             stage.showAndWait();
         } catch (Exception e) {
             e.printStackTrace();
-            String msg = e.getMessage();
-            showError("Failed to open order window (" + e.getClass().getSimpleName() + "): " + (msg == null ? "" : msg));
+            Throwable root = getRootCause(e);
+            String msg = root.getMessage();
+            showError("Failed to open order window (" + root.getClass().getSimpleName() + "): " + (msg == null ? "" : msg));
         }
+    }
+
+    private Throwable getRootCause(Throwable throwable) {
+        Throwable root = throwable;
+        while (root.getCause() != null && root.getCause() != root) {
+            root = root.getCause();
+        }
+        return root;
     }
 
     private void loadAllTracks() {
