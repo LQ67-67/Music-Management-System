@@ -68,8 +68,7 @@ public class LoginController {
         String username = usernameField.getText();
         String password = passwordField.getText();
 
-        if (username == null || username.isBlank() ||
-                password == null || password.isBlank()) {
+        if (username == null || username.isBlank() || password == null || password.isBlank()) {
             errorLabel.setText("Username and password are required.");
             infoLabel.setText("");
             return;
