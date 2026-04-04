@@ -12,7 +12,33 @@
     -fx-text-fill: red;
 }
 
+.info-label {
+    -fx-text-fill: #0066cc;
+    -fx-font-size: 12px;
+}
+
+.hint-label {
+    -fx-text-fill: #666666;
+    -fx-font-size: 11px;
+}
+
 Button {
     -fx-font-weight: bold;
 }
+
+.primary-button {
+    -fx-font-weight: bold;
+    -fx-padding: 8px 20px;
+}
+
+.link-button {
+    -fx-font-size: 14px;
+    -fx-text-fill: #0066cc;
+    -fx-underline: false;
+}
+
+.link-button:hover {
+    -fx-underline: true;
+}
+
 

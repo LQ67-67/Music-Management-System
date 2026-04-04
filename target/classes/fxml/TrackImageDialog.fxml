@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox fx:controller="com.example.musiclibrary.controller.TrackImageDialogController"
+      xmlns="http://javafx.com/javafx"
+      xmlns:fx="http://javafx.com/fxml"
+      stylesheets="@../css/app.css"
+      spacing="15"
+      prefWidth="400.0"
+      prefHeight="350.0">
+
+    <padding>
+        <Insets top="15" right="15" bottom="15" left="15"/>
+    </padding>
+
+    <Label text="Select Track Image" styleClass="title-label"/>
+
+    <VBox spacing="10" style="-fx-border-color: #cccccc; -fx-border-width: 1; -fx-border-radius: 5;">
+        <padding>
+            <Insets top="10" right="10" bottom="10" left="10"/>
+        </padding>
+        <children>
+            <ImageView fx:id="imagePreview" fitWidth="200" fitHeight="200"/>
+        </children>
+    </VBox>
+
+    <Label fx:id="selectedFileLabel" text="No image selected" style="-fx-text-fill: #666666;"/>
+
+    <Button text="Browse and Select Image" onAction="#handleSelectImage" prefWidth="Double.MAX_VALUE" style="-fx-padding: 10px;"/>
+
+    <HBox spacing="10" style="-fx-alignment: center-right;">
+        <children>
+            <Button text="Cancel" prefWidth="80" onAction="#handleCancel" style="-fx-padding: 8px 20px;"/>
+            <Button fx:id="confirmButton" text="Confirm" prefWidth="80" onAction="#handleConfirm"
+                    style="-fx-padding: 8px 20px; -fx-font-weight: bold;"/>
+        </children>
+    </HBox>
+</VBox>
+

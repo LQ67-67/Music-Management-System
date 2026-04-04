@@ -5,6 +5,7 @@ import com.example.musiclibrary.model.OrderItem;
 import com.example.musiclibrary.model.Track;
 import com.example.musiclibrary.service.OrderService;
 import com.example.musiclibrary.session.SessionManager;
+import com.example.musiclibrary.util.TrackMediaResolver;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -13,8 +14,10 @@ import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableCell;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
+import javafx.scene.image.ImageView;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 
@@ -31,6 +34,9 @@ public class UserMainController {
 
     @FXML
     private TableView<Track> trackTable;
+
+    @FXML
+    private TableColumn<Track, Track> colCover;
 
     @FXML
     private TableColumn<Track, String> colTitle;
@@ -59,6 +65,21 @@ public class UserMainController {
             welcomeLabel.setText("Welcome, " + SessionManager.getCurrentUser().getUsername());
         }
 
+        colCover.setCellValueFactory(data -> new javafx.beans.property.SimpleObjectProperty<>(data.getValue()));
+        colCover.setCellFactory(col -> new TableCell<>() {
+            private final ImageView imageView = createTrackImageView();
+
+            @Override
+            protected void updateItem(Track item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setGraphic(null);
+                    return;
+                }
+                imageView.setImage(TrackMediaResolver.loadTrackImage(item, item.getId() + ".mp3"));
+                setGraphic(imageView);
+            }
+        });
         colTitle.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().getTitle()));
         colArtist.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().getArtist()));
         colGenre.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().getGenre()));
@@ -137,6 +158,27 @@ public class UserMainController {
         }
     }
 
+    @FXML
+    private void handleOpenMusicPlayer() {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/MusicPlayerView.fxml"));
+            Scene scene = new Scene(loader.load(), 600, 500);
+            Stage stage = new Stage();
+            stage.setTitle("Music Player");
+            stage.initModality(Modality.WINDOW_MODAL);
+            stage.initOwner(trackTable.getScene().getWindow());
+            stage.setScene(scene);
+            stage.setMinWidth(500);
+            stage.setMinHeight(400);
+            stage.showAndWait();
+        } catch (Exception e) {
+            e.printStackTrace();
+            Throwable root = getRootCause(e);
+            String msg = root.getMessage();
+            showError("Failed to open music player (" + root.getClass().getSimpleName() + "): " + (msg == null ? "" : msg));
+        }
+    }
+
     private Throwable getRootCause(Throwable throwable) {
         Throwable root = throwable;
         while (root.getCause() != null && root.getCause() != root) {
@@ -165,5 +207,13 @@ public class UserMainController {
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
+    }
+
+    private ImageView createTrackImageView() {
+        ImageView imageView = new ImageView();
+        imageView.setFitWidth(56);
+        imageView.setFitHeight(56);
+        imageView.setPreserveRatio(true);
+        return imageView;
     }
 }

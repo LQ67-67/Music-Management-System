@@ -45,6 +45,7 @@
 
                 <TableView fx:id="trackTable" prefHeight="520">
                     <columns>
+                        <TableColumn fx:id="colCover" text="Cover" prefWidth="90"/>
                         <TableColumn fx:id="colTitle" text="Title" prefWidth="150"/>
                         <TableColumn fx:id="colArtist" text="Artist" prefWidth="120"/>
                         <TableColumn fx:id="colGenre" text="Genre" prefWidth="100"/>
@@ -57,10 +58,10 @@
                     <children>
                         <Button text="Add to Cart" onAction="#handleAddToCart"/>
                         <Button text="View Cart / Orders" onAction="#handleViewOrders"/>
+                        <Button text="🎵 Music Player" onAction="#handleOpenMusicPlayer"/>
                     </children>
                 </HBox>
             </children>
         </VBox>
     </center>
 </BorderPane>
-

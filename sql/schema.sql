@@ -91,6 +91,6 @@ INSERT INTO customers (name, email, phone, city) VALUES
 ('Bob',   'bob@example.com',   '013-9876543', 'Penang');
 
 INSERT INTO tracks (title, artist, album, genre, price, stock_qty) VALUES
-('明日、夕暮れまで(水星领航员)', '北川勝利', 'Album A - 《ARIA The OVA ~ARIETTA~》', 'Anime',  3.50, 100),
-('Nagisa', 'Key Sound Team', 'CLANNAD ORIGINAL SOUNDTRACK', 'Anime', 4.20, 80),
-('風を待った日(等风的日子)', 'Key Sounds Label', 'Kanon', 'Anime', 5.00, 50);
+('1. Until Tomorrow''s Twilight(明日、夕暮れまで)', '北川勝利', 'Album A - 《ARIA The OVA ~ARIETTA~》', 'Anime',  3.50, 100),
+('2. Nagisa(なぎさ)', 'Key Sound Team', 'CLANNAD ORIGINAL SOUNDTRACK', 'Anime', 4.20, 80),
+('3. The Day I Waited for the Wind(風を待った日)', 'Key Sounds Label', 'Kanon', 'Anime', 5.00, 50);

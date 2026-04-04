@@ -3,7 +3,10 @@ package com.example.musiclibrary;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
+import javafx.scene.image.Image;
 import javafx.stage.Stage;
+
+import java.io.InputStream;
 
 public class MusicLibraryApp extends Application {
 
@@ -15,7 +18,11 @@ public class MusicLibraryApp extends Application {
         Scene scene = new Scene(loader.load(), 500, 340);
         primaryStage.setTitle("Music Library Management System");
         primaryStage.setScene(scene);
-        primaryStage.getIcons().add(new javafx.scene.image.Image("/images/music.png")); // set the icon of the stage
+        try (InputStream iconStream = getClass().getResourceAsStream("/images/music.png")) {
+            if (iconStream != null) {
+                primaryStage.getIcons().add(new Image(iconStream));
+            }
+        }
         primaryStage.setMinWidth(420);
         primaryStage.setMinHeight(280);
         primaryStage.setResizable(true);

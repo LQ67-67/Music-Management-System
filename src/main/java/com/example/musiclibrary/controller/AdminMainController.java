@@ -6,6 +6,7 @@ import com.example.musiclibrary.db.DBConnectionManager;
 import com.example.musiclibrary.model.Customer;
 import com.example.musiclibrary.model.Track;
 import com.example.musiclibrary.session.SessionManager;
+import com.example.musiclibrary.util.TrackMediaResolver;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -17,7 +18,9 @@ import javafx.scene.control.Label;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableCell;
 import javafx.scene.control.TableView;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.VBox;
 
 import java.math.BigDecimal;
@@ -71,6 +74,24 @@ public class AdminMainController {
         TableColumn<Track, String> titleCol = new TableColumn<>("Title");
         titleCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getTitle()));
 
+        TableColumn<Track, Track> imageCol = new TableColumn<>("Image");
+        imageCol.setCellValueFactory(data -> new javafx.beans.property.SimpleObjectProperty<>(data.getValue()));
+        imageCol.setPrefWidth(110);
+        imageCol.setCellFactory(col -> new TableCell<>() {
+            private final ImageView imageView = createTrackImageView();
+
+            @Override
+            protected void updateItem(Track item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setGraphic(null);
+                    return;
+                }
+                imageView.setImage(TrackMediaResolver.loadTrackImage(item, item.getId() + ".mp3"));
+                setGraphic(imageView);
+            }
+        });
+
         TableColumn<Track, String> artistCol = new TableColumn<>("Artist");
         artistCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getArtist()));
 
@@ -89,7 +110,7 @@ public class AdminMainController {
         TableColumn<Track, String> stockCol = new TableColumn<>("Stock");
         stockCol.setCellValueFactory(data -> new SimpleStringProperty(String.valueOf(data.getValue().getStockQty())));
 
-        trackTable.getColumns().addAll(titleCol, artistCol, albumCol, genreCol, priceCol, stockCol);
+        trackTable.getColumns().addAll(imageCol, titleCol, artistCol, albumCol, genreCol, priceCol, stockCol);
 
         Button refreshButton = new Button("Refresh Tracks");
         refreshButton.setOnAction(event -> loadTracks());
@@ -202,5 +223,13 @@ public class AdminMainController {
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
+    }
+
+    private ImageView createTrackImageView() {
+        ImageView imageView = new ImageView();
+        imageView.setFitWidth(64);
+        imageView.setFitHeight(64);
+        imageView.setPreserveRatio(true);
+        return imageView;
     }
 }

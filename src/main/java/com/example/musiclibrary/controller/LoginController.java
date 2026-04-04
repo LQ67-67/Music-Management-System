@@ -11,10 +11,12 @@ import javafx.scene.Scene;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
+import javafx.scene.control.TextFormatter;
 import javafx.stage.Stage;
 
 import java.net.URL;
 import java.sql.SQLException;
+import java.util.function.UnaryOperator;
 
 public class LoginController {
 
@@ -27,7 +29,39 @@ public class LoginController {
     @FXML
     private Label errorLabel;
 
+    @FXML
+    private Label infoLabel;
+
     private final UserDao userDao = new UserDao();
+
+    @FXML
+    private void initialize() {
+        // 限制用户名最多20个字符
+        setTextFieldMaxLength(usernameField, 20);
+
+        // 限制密码最多30个字符
+        setPasswordFieldMaxLength(passwordField, 30);
+    }
+
+    private void setTextFieldMaxLength(TextField textField, int maxLength) {
+        UnaryOperator<TextFormatter.Change> filter = change -> {
+            if (change.getControlNewText().length() <= maxLength) {
+                return change;
+            }
+            return null;
+        };
+        textField.setTextFormatter(new TextFormatter<>(filter));
+    }
+
+    private void setPasswordFieldMaxLength(PasswordField passwordField, int maxLength) {
+        UnaryOperator<TextFormatter.Change> filter = change -> {
+            if (change.getControlNewText().length() <= maxLength) {
+                return change;
+            }
+            return null;
+        };
+        passwordField.setTextFormatter(new TextFormatter<>(filter));
+    }
 
     @FXML
     private void handleLogin(ActionEvent event) {
@@ -37,6 +71,7 @@ public class LoginController {
         if (username == null || username.isBlank() ||
                 password == null || password.isBlank()) {
             errorLabel.setText("Username and password are required.");
+            infoLabel.setText("");
             return;
         }
 
@@ -44,11 +79,13 @@ public class LoginController {
             User user = userDao.findByUsername(username);
             if (user == null || !password.equals(user.getPasswordHash())) {
                 errorLabel.setText("Invalid username or password.");
+                infoLabel.setText("");
                 return;
             }
 
             SessionManager.setCurrentUser(user);
             errorLabel.setText("");
+            infoLabel.setText("");
 
             Stage stage = (Stage) usernameField.getScene().getWindow();
             if (SessionManager.isAdmin()) {
@@ -58,7 +95,20 @@ public class LoginController {
             }
         } catch (SQLException e) {
             errorLabel.setText("Database error: " + e.getMessage());
+            infoLabel.setText("");
         }
+    }
+
+    @FXML
+    private void handleForgotPassword(ActionEvent event) {
+        infoLabel.setText("Password reset feature coming soon. Please contact administrator.");
+        errorLabel.setText("");
+    }
+
+    @FXML
+    private void handleRegister(ActionEvent event) {
+        infoLabel.setText("Registration feature coming soon. Please contact administrator.");
+        errorLabel.setText("");
     }
 
     private void switchScene(Stage stage, String fxmlPath, double width, double height) {
