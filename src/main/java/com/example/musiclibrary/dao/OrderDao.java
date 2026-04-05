@@ -74,6 +74,21 @@ public class OrderDao {
         }
     }
 
+    public Order findById(int orderId) throws SQLException {
+        String sql = "SELECT id, customer_id, user_id, order_date, status, total_amount, shipping_city " +
+                "FROM orders WHERE id = ?";
+        try (Connection conn = DBConnectionManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, orderId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return mapRow(rs);
+                }
+                return null;
+            }
+        }
+    }
+
     private Order mapRow(ResultSet rs) throws SQLException {
         Order o = new Order();
         o.setId(rs.getInt("id"));

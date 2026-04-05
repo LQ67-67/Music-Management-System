@@ -57,7 +57,8 @@
                 <HBox spacing="10">
                     <children>
                         <Button text="Add to Cart" onAction="#handleAddToCart"/>
-                        <Button text="View Cart / Orders" onAction="#handleViewOrders"/>
+                        <Button text="View Cart" onAction="#handleViewCart"/>
+                        <Button text="View Orders" onAction="#handleViewOrders"/>
                         <Button text="🎵 Music Player" onAction="#handleOpenMusicPlayer"/>
                     </children>
                 </HBox>

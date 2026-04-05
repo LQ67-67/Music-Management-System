@@ -12,6 +12,14 @@ import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TextFormatter;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.layout.GridPane;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
 
 import java.net.URL;
@@ -106,8 +114,73 @@ public class LoginController {
 
     @FXML
     private void handleRegister(ActionEvent event) {
-        infoLabel.setText("Registration feature coming soon. Please contact administrator.");
-        errorLabel.setText("");
+        Stage dialog = new Stage();
+        dialog.initModality(Modality.APPLICATION_MODAL);
+        dialog.setTitle("Register");
+
+        TextField usernameField = new TextField();
+        PasswordField passwordField = new PasswordField();
+        PasswordField confirmPasswordField = new PasswordField();
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(20));
+        grid.add(new Label("Username:"), 0, 0);
+        grid.add(usernameField, 1, 0);
+        grid.add(new Label("Password:"), 0, 1);
+        grid.add(passwordField, 1, 1);
+        grid.add(new Label("Confirm Password:"), 0, 2);
+        grid.add(confirmPasswordField, 1, 2);
+
+        Button registerButton = new Button("Register");
+        registerButton.setOnAction(e -> {
+            String username = usernameField.getText();
+            String password = passwordField.getText();
+            String confirmPassword = confirmPasswordField.getText();
+
+            if (username == null || username.isBlank() || password == null || password.isBlank()) {
+                showErrorInDialog(dialog, "Username and password are required.");
+                return;
+            }
+
+            if (!password.equals(confirmPassword)) {
+                showErrorInDialog(dialog, "Passwords do not match.");
+                return;
+            }
+
+            try {
+                userDao.create(username, password, "USER");
+                dialog.close();
+                infoLabel.setText("Registration successful! Please login.");
+                errorLabel.setText("");
+            } catch (SQLException ex) {
+                if (ex.getMessage().contains("Duplicate entry")) {
+                    showErrorInDialog(dialog, "Username already exists.");
+                } else {
+                    showErrorInDialog(dialog, "Registration failed: " + ex.getMessage());
+                }
+            }
+        });
+
+        Button cancelButton = new Button("Cancel");
+        cancelButton.setOnAction(e -> dialog.close());
+
+        HBox buttonBox = new HBox(10, registerButton, cancelButton);
+        buttonBox.setAlignment(Pos.CENTER);
+
+        VBox vbox = new VBox(10, grid, buttonBox);
+        Scene scene = new Scene(vbox);
+        dialog.setScene(scene);
+        dialog.showAndWait();
+    }
+
+    private void showErrorInDialog(Stage dialog, String message) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.initOwner(dialog);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
     }
 
     private void switchScene(Stage stage, String fxmlPath, double width, double height) {

@@ -28,5 +28,22 @@ public class UserDao {
             }
         }
     }
+
+    public int create(String username, String password, String role) throws SQLException {
+        String sql = "INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)";
+        try (Connection conn = DBConnectionManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql, java.sql.Statement.RETURN_GENERATED_KEYS)) {
+            ps.setString(1, username);
+            ps.setString(2, password);
+            ps.setString(3, role);
+            ps.executeUpdate();
+            try (ResultSet rs = ps.getGeneratedKeys()) {
+                if (rs.next()) {
+                    return rs.getInt(1);
+                }
+                return -1;
+            }
+        }
+    }
 }
 

@@ -59,6 +59,7 @@
                         <Button text="Confirm Order" onAction="#handleConfirmOrder"/>
                         <Button text="Cancel Order" onAction="#handleCancelOrder"/>
                         <Button text="Delete Order" onAction="#handleDeleteOrder"/>
+                        <Button text="View Invoice" onAction="#handleViewInvoice"/>
                     </children>
                 </HBox>
             </children>

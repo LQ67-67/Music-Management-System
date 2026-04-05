@@ -77,6 +77,50 @@ public class TrackDao {
         }
     }
 
+    public int create(Track track) throws SQLException {
+        String sql = "INSERT INTO tracks (title, artist, album, genre, price, stock_qty, is_active) VALUES (?, ?, ?, ?, ?, ?, 1)";
+        try (Connection conn = DBConnectionManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql, java.sql.Statement.RETURN_GENERATED_KEYS)) {
+            ps.setString(1, track.getTitle());
+            ps.setString(2, track.getArtist());
+            ps.setString(3, track.getAlbum());
+            ps.setString(4, track.getGenre());
+            ps.setBigDecimal(5, track.getPrice());
+            ps.setInt(6, track.getStockQty());
+            ps.executeUpdate();
+            try (ResultSet rs = ps.getGeneratedKeys()) {
+                if (rs.next()) {
+                    return rs.getInt(1);
+                }
+                return -1;
+            }
+        }
+    }
+
+    public void update(Track track) throws SQLException {
+        String sql = "UPDATE tracks SET title = ?, artist = ?, album = ?, genre = ?, price = ?, stock_qty = ? WHERE id = ?";
+        try (Connection conn = DBConnectionManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, track.getTitle());
+            ps.setString(2, track.getArtist());
+            ps.setString(3, track.getAlbum());
+            ps.setString(4, track.getGenre());
+            ps.setBigDecimal(5, track.getPrice());
+            ps.setInt(6, track.getStockQty());
+            ps.setInt(7, track.getId());
+            ps.executeUpdate();
+        }
+    }
+
+    public void delete(int trackId) throws SQLException {
+        String sql = "UPDATE tracks SET is_active = 0 WHERE id = ?";
+        try (Connection conn = DBConnectionManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, trackId);
+            ps.executeUpdate();
+        }
+    }
+
     private Track mapRow(ResultSet rs) throws SQLException {
         Track t = new Track();
         t.setId(rs.getInt("id"));
