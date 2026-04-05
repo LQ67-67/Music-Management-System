@@ -38,9 +38,6 @@ public class MusicPlayerController {
     private Button pauseButton;
 
     @FXML
-    private Button stopButton;
-
-    @FXML
     private Button previousButton;
 
     @FXML
@@ -139,24 +136,6 @@ public class MusicPlayerController {
         }
     }
 
-    // Handle stop button click
-    @FXML
-    private void handleStop() {
-        if (mediaPlayer != null) {
-            mediaPlayer.stop();
-            isPlaying = false;
-            currentTrackIndex = -1;
-            nowPlayingLabel.setText("Stopped");
-            progressSlider.setValue(0);
-            timeLabel.setText("00:00 / 00:00");
-            updateTrackImage(null);
-            updatePlayButtonState();
-            if (updateTimer != null) {
-                updateTimer.stop();
-            }
-        }
-    }
-
     // Handle previous button click
     @FXML
     private void handlePrevious() {
@@ -229,7 +208,17 @@ public class MusicPlayerController {
                 if (currentTrackIndex < playlist.size() - 1) {
                     playTrack(currentTrackIndex + 1);
                 } else {
-                    handleStop();
+                    mediaPlayer.pause();
+                    isPlaying = false;
+                    currentTrackIndex = -1;
+                    nowPlayingLabel.setText("Paused");
+                    progressSlider.setValue(0);
+                    timeLabel.setText("00:00 / 00:00");
+                    updateTrackImage(null);
+                    updatePlayButtonState();
+                    if (updateTimer != null) {
+                        updateTimer.stop();
+                    }
                 }
             });
 
@@ -285,15 +274,14 @@ public class MusicPlayerController {
         return String.format("%02d:%02d", minutes, seconds);
     }
 
-    // Update play/pause/stop button states
+    // Update play/pause button states
     private void updatePlayButtonState() {
         boolean hasPlaylist = !playlist.isEmpty();
         boolean isStopped = currentTrackIndex == -1;
 
-        if (playButton != null && pauseButton != null && stopButton != null) {
+        if (playButton != null && pauseButton != null) {
             playButton.setDisable(isPlaying || !hasPlaylist);
             pauseButton.setDisable(!isPlaying);
-            stopButton.setDisable(!isPlaying);
         }
 
         if (previousButton != null && nextButton != null) {

@@ -70,7 +70,6 @@
                 <Button fx:id="previousButton" text="⏮ Previous" onAction="#handlePrevious" prefWidth="100"/>
                 <Button fx:id="playButton" text="▶ Play" onAction="#handlePlay" prefWidth="80"/>
                 <Button fx:id="pauseButton" text="⏸ Pause" onAction="#handlePause" prefWidth="80"/>
-                <Button fx:id="stopButton" text="⏹ Stop" onAction="#handleStop" prefWidth="80"/>
                 <Button fx:id="nextButton" text="⏭ Next" onAction="#handleNext" prefWidth="100"/>
             </children>
         </HBox>
