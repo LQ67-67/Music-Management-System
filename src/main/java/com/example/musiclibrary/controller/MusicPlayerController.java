@@ -45,6 +45,12 @@ public class MusicPlayerController {
     private Button stopButton;
 
     @FXML
+    private Button previousButton;
+
+    @FXML
+    private Button nextButton;
+
+    @FXML
     private ImageView trackImageView;
 
     private MediaPlayer mediaPlayer;
@@ -147,6 +153,34 @@ public class MusicPlayerController {
         }
     }
 
+    @FXML
+    private void handlePrevious() {
+        if (playlist.isEmpty()) {
+            return;
+        }
+        if (currentTrackIndex > 0) {
+            playTrack(currentTrackIndex - 1);
+        } else if (currentTrackIndex == 0) {
+            playTrack(playlist.size() - 1);
+        } else {
+            playTrack(0);
+        }
+    }
+
+    @FXML
+    private void handleNext() {
+        if (playlist.isEmpty()) {
+            return;
+        }
+        if (currentTrackIndex >= 0 && currentTrackIndex < playlist.size() - 1) {
+            playTrack(currentTrackIndex + 1);
+        } else if (currentTrackIndex == playlist.size() - 1) {
+            playTrack(0);
+        } else {
+            playTrack(0);
+        }
+    }
+
     private void playTrack(int index) {
         if (index < 0 || index >= playlist.size()) {
             return;
@@ -234,10 +268,18 @@ public class MusicPlayerController {
     }
 
     private void updatePlayButtonState() {
+        boolean hasPlaylist = !playlist.isEmpty();
+        boolean isStopped = currentTrackIndex == -1;
+
         if (playButton != null && pauseButton != null && stopButton != null) {
-            playButton.setDisable(isPlaying || playlist.isEmpty());
+            playButton.setDisable(isPlaying || !hasPlaylist);
             pauseButton.setDisable(!isPlaying);
             stopButton.setDisable(!isPlaying);
+        }
+
+        if (previousButton != null && nextButton != null) {
+            previousButton.setDisable(!hasPlaylist);
+            nextButton.setDisable(!hasPlaylist);
         }
     }
 

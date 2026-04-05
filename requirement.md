@@ -162,3 +162,22 @@
 - CustomerDaoTest：测试Customer的CRUD操作
 - UserDaoTest：测试User的创建和查找
 - OrderServiceTest：测试订单创建和库存验证
+
+
+## 修改内容：
+
+1. FXML 界面 (MusicPlayerView.fxml:60-64)
+    - 添加了"⏮ Previous"按钮（上一首）
+    - 添加了"⏭ Next"按钮（下一首）
+
+2. Controller 逻辑 (MusicPlayerController.java)
+    - 添加了按钮注入字段
+    - 实现了 handlePrevious() 方法
+    - 实现了 handleNext() 方法
+    - 更新了按钮状态管理逻辑
+
+功能特性：
+- 上一首：如果不是第一首，播放前一首；如果是第一首，循环到最后一首
+- 下一首：如果不是最后一首，播放后一首；如果是最后一首，循环到第一首
+- 循环播放：支持列表循环播放
+- 状态控制：当播放列表为空时，上一首和下一首按钮会被禁用
