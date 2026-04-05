@@ -387,8 +387,8 @@ public class AdminMainController {
 
     private ImageView createTrackImageView() {
         ImageView imageView = new ImageView();
-        imageView.setFitWidth(64);
-        imageView.setFitHeight(64);
+        imageView.setFitWidth(80);
+        imageView.setFitHeight(80);
         imageView.setPreserveRatio(true);
         return imageView;
     }

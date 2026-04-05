@@ -294,8 +294,8 @@ public class UserMainController {
 
     private ImageView createTrackImageView() {
         ImageView imageView = new ImageView();
-        imageView.setFitWidth(56);
-        imageView.setFitHeight(56);
+        imageView.setFitWidth(80);
+        imageView.setFitHeight(80);
         imageView.setPreserveRatio(true);
         return imageView;
     }
