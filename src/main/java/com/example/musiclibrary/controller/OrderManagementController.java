@@ -10,17 +10,12 @@ import com.example.musiclibrary.session.SessionManager;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
-import javafx.scene.control.Alert;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.TableColumn;
-import javafx.scene.control.TableView;
-import javafx.scene.control.TextField;
-import javafx.scene.layout.VBox;
+import javafx.geometry.Insets;
 import javafx.scene.Scene;
+import javafx.scene.control.*;
+import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
-import javafx.geometry.Insets;
 
 import java.math.BigDecimal;
 import java.sql.SQLException;
@@ -64,16 +59,24 @@ public class OrderManagementController {
     @FXML
     private TextField shippingCityField;
 
-    private final ObservableList<Order> orders = FXCollections.observableArrayList();
-    private final ObservableList<OrderItem> orderItems = FXCollections.observableArrayList();
+    private ObservableList<Order> orders;
+    private ObservableList<OrderItem> orderItems;
+    private OrderDao orderDao;
+    private OrderItemDao orderItemDao;
+    private TrackDao trackDao;
+    private Map<Integer, String> trackLabelCache;
 
-    private final OrderDao orderDao = new OrderDao();
-    private final OrderItemDao orderItemDao = new OrderItemDao();
-    private final TrackDao trackDao = new TrackDao();
-    private final Map<Integer, String> trackLabelCache = new HashMap<>();
-
+    // Initialize method - called when FXML is loaded
     @FXML
     private void initialize() {
+        orders = FXCollections.observableArrayList();
+        orderItems = FXCollections.observableArrayList();
+        orderDao = new OrderDao();
+        orderItemDao = new OrderItemDao();
+        trackDao = new TrackDao();
+        trackLabelCache = new HashMap<>();
+
+        // Setup order table columns
         colOrderId.setCellValueFactory(data -> new javafx.beans.property.SimpleIntegerProperty(data.getValue().getId()));
         colOrderDate.setCellValueFactory(data -> {
             if (data.getValue().getOrderDate() == null) {
@@ -85,10 +88,12 @@ public class OrderManagementController {
         colStatus.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().getStatus()));
         colTotal.setCellValueFactory(data -> new javafx.beans.property.SimpleObjectProperty<>(data.getValue().getTotalAmount()));
 
+        // Setup order item table columns
         colQuantity.setCellValueFactory(data -> new javafx.beans.property.SimpleIntegerProperty(data.getValue().getQuantity()));
         colUnitPrice.setCellValueFactory(data -> new javafx.beans.property.SimpleObjectProperty<>(data.getValue().getUnitPrice()));
         colLineTotal.setCellValueFactory(data -> new javafx.beans.property.SimpleObjectProperty<>(data.getValue().getLineTotal()));
 
+        // Setup track column with caching
         colTrack.setCellValueFactory(data -> {
             int trackId = data.getValue().getTrackId();
             String label = trackLabelCache.get(trackId);
@@ -104,9 +109,11 @@ public class OrderManagementController {
             return new javafx.beans.property.SimpleStringProperty(label);
         });
 
+        // Set table items
         orderTable.setItems(orders);
         orderItemTable.setItems(orderItems);
 
+        // Add selection listener
         orderTable.getSelectionModel().selectedItemProperty().addListener((obs, oldSel, newSel) -> {
             if (newSel != null) {
                 loadOrderItems(newSel.getId());
@@ -120,6 +127,7 @@ public class OrderManagementController {
         loadOrders();
     }
 
+    // Load all orders for current user
     private void loadOrders() {
         if (!SessionManager.isLoggedIn()) {
             showError("You must be logged in to view orders.");
@@ -133,6 +141,7 @@ public class OrderManagementController {
         }
     }
 
+    // Load order items for a specific order
     private void loadOrderItems(int orderId) {
         try {
             List<OrderItem> list = orderItemDao.findByOrder(orderId);
@@ -142,6 +151,7 @@ public class OrderManagementController {
         }
     }
 
+    // Handle confirm order button click
     @FXML
     private void handleConfirmOrder() {
         Order selected = orderTable.getSelectionModel().getSelectedItem();
@@ -158,6 +168,7 @@ public class OrderManagementController {
         }
     }
 
+    // Handle cancel order button click
     @FXML
     private void handleCancelOrder() {
         Order selected = orderTable.getSelectionModel().getSelectedItem();
@@ -173,6 +184,7 @@ public class OrderManagementController {
         }
     }
 
+    // Handle delete order button click
     @FXML
     private void handleDeleteOrder() {
         Order selected = orderTable.getSelectionModel().getSelectedItem();
@@ -188,6 +200,7 @@ public class OrderManagementController {
         }
     }
 
+    // Handle view invoice button click
     @FXML
     private void handleViewInvoice() {
         Order selected = orderTable.getSelectionModel().getSelectedItem();
@@ -211,6 +224,7 @@ public class OrderManagementController {
         Label totalLabel = new Label("Total: " + selected.getTotalAmount());
         totalLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
 
+        // Create item table
         TableView<OrderItem> itemTable = new TableView<>(orderItems);
         itemTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
@@ -241,16 +255,17 @@ public class OrderManagementController {
 
         itemTable.getColumns().addAll(trackCol, qtyCol, priceCol, totalCol);
 
-        Button closeButton = new Button("Close");
-        closeButton.setOnAction(event -> dialog.close());
+        Button closeBtn = new Button("Close");
+        closeBtn.setOnAction(event -> dialog.close());
 
-        vbox.getChildren().addAll(orderLabel, dateLabel, statusLabel, totalLabel, new Label("Items:"), itemTable, closeButton);
+        vbox.getChildren().addAll(orderLabel, dateLabel, statusLabel, totalLabel, new Label("Items:"), itemTable, closeBtn);
 
         Scene scene = new Scene(vbox, 600, 500);
         dialog.setScene(scene);
         dialog.showAndWait();
     }
 
+    // Show error message
     private void showError(String message) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setHeaderText(null);
@@ -258,4 +273,3 @@ public class OrderManagementController {
         alert.showAndWait();
     }
 }
-

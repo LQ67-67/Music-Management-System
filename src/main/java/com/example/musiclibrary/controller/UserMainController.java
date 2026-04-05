@@ -12,13 +12,7 @@ import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
-import javafx.scene.control.Alert;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.TableColumn;
-import javafx.scene.control.TableCell;
-import javafx.scene.control.TableView;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
@@ -27,6 +21,7 @@ import javafx.stage.Stage;
 
 import java.math.BigDecimal;
 import java.sql.SQLException;
+import java.util.List;
 
 public class UserMainController {
 
@@ -57,21 +52,35 @@ public class UserMainController {
     @FXML
     private TableColumn<Track, String> colStock;
 
-    private final ObservableList<Track> trackData = FXCollections.observableArrayList();
-    private final ObservableList<OrderItem> cartItems = FXCollections.observableArrayList();
+    private ObservableList<Track> trackData;
+    private ObservableList<OrderItem> cartItems;
+    private TrackDao trackDao;
+    private OrderService orderService;
 
-    private final TrackDao trackDao = new TrackDao();
-    private final OrderService orderService = new OrderService();
-
+    // Initialize method - called when FXML is loaded
     @FXML
     private void initialize() {
+        trackData = FXCollections.observableArrayList();
+        cartItems = FXCollections.observableArrayList();
+        trackDao = new TrackDao();
+        orderService = new OrderService();
+
         if (SessionManager.getCurrentUser() != null) {
             welcomeLabel.setText("Welcome, " + SessionManager.getCurrentUser().getUsername());
         }
 
+        // Setup table columns
+        setupTrackTableColumns();
+        trackTable.setItems(trackData);
+        loadAllTracks();
+    }
+
+    // Setup table columns
+    private void setupTrackTableColumns() {
+        // Cover image column
         colCover.setCellValueFactory(data -> new javafx.beans.property.SimpleObjectProperty<>(data.getValue()));
         colCover.setCellFactory(col -> new TableCell<>() {
-            private final ImageView imageView = createTrackImageView();
+            private ImageView imageView = new ImageView();
 
             @Override
             protected void updateItem(Track item, boolean empty) {
@@ -80,10 +89,15 @@ public class UserMainController {
                     setGraphic(null);
                     return;
                 }
+                imageView.setFitWidth(80);
+                imageView.setFitHeight(80);
+                imageView.setPreserveRatio(true);
                 imageView.setImage(TrackMediaResolver.loadTrackImage(item, item.getId() + ".mp3"));
                 setGraphic(imageView);
             }
         });
+
+        // Text columns
         colTitle.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().getTitle()));
         colArtist.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().getArtist()));
         colGenre.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(data.getValue().getGenre()));
@@ -92,16 +106,14 @@ public class UserMainController {
             return new javafx.beans.property.SimpleStringProperty(price == null ? "" : price.toPlainString());
         });
         colStock.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(String.valueOf(data.getValue().getStockQty())));
-
-        trackTable.setItems(trackData);
-        loadAllTracks();
     }
 
+    // Handle search button click
     @FXML
     private void handleSearch() {
         String keyword = searchField.getText();
         try {
-            if (keyword == null || keyword.isBlank()) {
+            if (keyword == null || keyword.isEmpty()) {
                 loadAllTracks();
             } else {
                 trackData.setAll(trackDao.searchActiveByKeyword(keyword.trim()));
@@ -111,6 +123,7 @@ public class UserMainController {
         }
     }
 
+    // Handle add to cart button click
     @FXML
     private void handleAddToCart() {
         Track selected = trackTable.getSelectionModel().getSelectedItem();
@@ -123,24 +136,29 @@ public class UserMainController {
             return;
         }
 
-        // 检查是否已经在购物车中
+        // Check if item already in cart
+        boolean found = false;
         for (OrderItem item : cartItems) {
             if (item.getTrackId() == selected.getId()) {
                 item.setQuantity(item.getQuantity() + 1);
                 showInfo("Added to cart. Total quantity: " + item.getQuantity());
-                return;
+                found = true;
+                break;
             }
         }
 
-        OrderItem item = new OrderItem();
-        item.setTrackId(selected.getId());
-        item.setQuantity(1);
-        item.setUnitPrice(selected.getPrice());
-        item.setLineTotal(selected.getPrice());
-        cartItems.add(item);
-        showInfo("Added to cart.");
+        if (!found) {
+            OrderItem item = new OrderItem();
+            item.setTrackId(selected.getId());
+            item.setQuantity(1);
+            item.setUnitPrice(selected.getPrice());
+            item.setLineTotal(selected.getPrice());
+            cartItems.add(item);
+            showInfo("Added to cart.");
+        }
     }
 
+    // Handle view cart button click
     @FXML
     private void handleViewCart() {
         if (cartItems.isEmpty()) {
@@ -155,6 +173,7 @@ public class UserMainController {
         TableView<OrderItem> cartTable = new TableView<>(cartItems);
         cartTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
+        // Create columns
         TableColumn<OrderItem, String> titleCol = new TableColumn<>("Track");
         titleCol.setCellValueFactory(data -> {
             try {
@@ -176,22 +195,23 @@ public class UserMainController {
 
         cartTable.getColumns().addAll(titleCol, qtyCol, priceCol, totalCol);
 
-        Button removeButton = new Button("Remove Selected");
-        removeButton.setOnAction(event -> {
+        // Create buttons
+        Button removeBtn = new Button("Remove Selected");
+        removeBtn.setOnAction(event -> {
             OrderItem selected = cartTable.getSelectionModel().getSelectedItem();
             if (selected != null) {
                 cartItems.remove(selected);
             }
         });
 
-        Button clearButton = new Button("Clear Cart");
-        clearButton.setOnAction(event -> {
+        Button clearBtn = new Button("Clear Cart");
+        clearBtn.setOnAction(event -> {
             cartItems.clear();
             dialog.close();
         });
 
-        Button checkoutButton = new Button("Checkout");
-        checkoutButton.setOnAction(event -> {
+        Button checkoutBtn = new Button("Checkout");
+        checkoutBtn.setOnAction(event -> {
             try {
                 if (!SessionManager.isLoggedIn()) {
                     showError("You must be logged in to checkout.");
@@ -208,10 +228,10 @@ public class UserMainController {
             }
         });
 
-        Button closeButton = new Button("Close");
-        closeButton.setOnAction(event -> dialog.close());
+        Button closeBtn = new Button("Close");
+        closeBtn.setOnAction(event -> dialog.close());
 
-        HBox buttonBox = new HBox(10, removeButton, clearButton, checkoutButton, closeButton);
+        HBox buttonBox = new HBox(10, removeBtn, clearBtn, checkoutBtn, closeBtn);
 
         VBox vbox = new VBox(10, cartTable, buttonBox);
         vbox.setPadding(new Insets(10));
@@ -220,6 +240,7 @@ public class UserMainController {
         dialog.showAndWait();
     }
 
+    // Handle view orders button click
     @FXML
     private void handleViewOrders() {
         try {
@@ -241,6 +262,7 @@ public class UserMainController {
         }
     }
 
+    // Handle open music player button click
     @FXML
     private void handleOpenMusicPlayer() {
         try {
@@ -262,6 +284,7 @@ public class UserMainController {
         }
     }
 
+    // Helper method to get root cause of exception
     private Throwable getRootCause(Throwable throwable) {
         Throwable root = throwable;
         while (root.getCause() != null && root.getCause() != root) {
@@ -270,6 +293,7 @@ public class UserMainController {
         return root;
     }
 
+    // Load all tracks from database
     private void loadAllTracks() {
         try {
             trackData.setAll(trackDao.findAllActive());
@@ -278,6 +302,7 @@ public class UserMainController {
         }
     }
 
+    // Show error message
     private void showError(String message) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setHeaderText(null);
@@ -285,18 +310,11 @@ public class UserMainController {
         alert.showAndWait();
     }
 
+    // Show info message
     private void showInfo(String message) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
-    }
-
-    private ImageView createTrackImageView() {
-        ImageView imageView = new ImageView();
-        imageView.setFitWidth(80);
-        imageView.setFitHeight(80);
-        imageView.setPreserveRatio(true);
-        return imageView;
     }
 }

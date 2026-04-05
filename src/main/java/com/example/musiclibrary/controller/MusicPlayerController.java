@@ -3,11 +3,7 @@ package com.example.musiclibrary.controller;
 import com.example.musiclibrary.util.TrackMediaResolver;
 import javafx.animation.PauseTransition;
 import javafx.fxml.FXML;
-import javafx.scene.control.Alert;
-import javafx.scene.control.Label;
-import javafx.scene.control.ListView;
-import javafx.scene.control.Slider;
-import javafx.scene.control.Button;
+import javafx.scene.control.*;
 import javafx.scene.image.ImageView;
 import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;
@@ -55,13 +51,17 @@ public class MusicPlayerController {
 
     private MediaPlayer mediaPlayer;
     private List<String> playlist;
-    private int currentTrackIndex = -1;
-    private boolean isPlaying = false;
+    private int currentTrackIndex;
+    private boolean isPlaying;
     private PauseTransition updateTimer;
 
+    // Initialize method - called when FXML is loaded
     @FXML
     private void initialize() {
         playlist = new ArrayList<>();
+        currentTrackIndex = -1;
+        isPlaying = false;
+
         loadMusicFiles();
         updateTrackImage(null);
 
@@ -105,6 +105,7 @@ public class MusicPlayerController {
         updatePlayButtonState();
     }
 
+    // Load music files from resources
     private void loadMusicFiles() {
         try {
             playlist = new ArrayList<>(TrackMediaResolver.listMusicFiles());
@@ -113,6 +114,7 @@ public class MusicPlayerController {
         }
     }
 
+    // Handle play button click
     @FXML
     private void handlePlay() {
         if (mediaPlayer != null && !isPlaying) {
@@ -127,6 +129,7 @@ public class MusicPlayerController {
         }
     }
 
+    // Handle pause button click
     @FXML
     private void handlePause() {
         if (mediaPlayer != null && isPlaying) {
@@ -136,6 +139,7 @@ public class MusicPlayerController {
         }
     }
 
+    // Handle stop button click
     @FXML
     private void handleStop() {
         if (mediaPlayer != null) {
@@ -153,6 +157,7 @@ public class MusicPlayerController {
         }
     }
 
+    // Handle previous button click
     @FXML
     private void handlePrevious() {
         if (playlist.isEmpty()) {
@@ -167,6 +172,7 @@ public class MusicPlayerController {
         }
     }
 
+    // Handle next button click
     @FXML
     private void handleNext() {
         if (playlist.isEmpty()) {
@@ -181,12 +187,14 @@ public class MusicPlayerController {
         }
     }
 
+    // Play track at specified index
     private void playTrack(int index) {
         if (index < 0 || index >= playlist.size()) {
             return;
         }
 
         try {
+            // Stop current media player if exists
             if (mediaPlayer != null) {
                 mediaPlayer.stop();
             }
@@ -194,24 +202,29 @@ public class MusicPlayerController {
             currentTrackIndex = index;
             String trackFile = playlist.get(index);
             URL musicUrl = TrackMediaResolver.findMusicUrl(trackFile);
+
             if (musicUrl == null) {
                 showError("Music file not found: " + trackFile);
                 return;
             }
 
+            // Create new media and media player
             Media media = new Media(musicUrl.toExternalForm());
             media.setOnError(() -> showError("Audio load failed for " + trackFile + ": " + getMediaErrorMessage(media.getError())));
+
             mediaPlayer = new MediaPlayer(media);
             mediaPlayer.setOnError(() -> showError("Playback failed for " + trackFile + ": " + getMediaErrorMessage(mediaPlayer.getError())));
 
             mediaPlayer.setVolume(volumeSlider.getValue() / 100.0);
 
+            // Set on ready - get duration
             mediaPlayer.setOnReady(() -> {
                 Duration duration = mediaPlayer.getMedia().getDuration();
                 progressSlider.setMax(duration.toSeconds());
                 updateTimeLabel();
             });
 
+            // Set on end of media - play next track
             mediaPlayer.setOnEndOfMedia(() -> {
                 if (currentTrackIndex < playlist.size() - 1) {
                     playTrack(currentTrackIndex + 1);
@@ -220,6 +233,7 @@ public class MusicPlayerController {
                 }
             });
 
+            // Start playing
             mediaPlayer.play();
             isPlaying = true;
             nowPlayingLabel.setText("Now Playing: " + trackFile);
@@ -232,6 +246,7 @@ public class MusicPlayerController {
         }
     }
 
+    // Start update timer for progress and time
     private void startUpdateTimer() {
         if (updateTimer == null) {
             updateTimer = new PauseTransition(Duration.millis(100));
@@ -246,12 +261,14 @@ public class MusicPlayerController {
         updateTimer.playFromStart();
     }
 
+    // Update progress slider value
     private void updateProgressSlider() {
         if (mediaPlayer != null) {
             progressSlider.setValue(mediaPlayer.getCurrentTime().toSeconds());
         }
     }
 
+    // Update time label
     private void updateTimeLabel() {
         if (mediaPlayer != null) {
             Duration current = mediaPlayer.getCurrentTime();
@@ -261,12 +278,14 @@ public class MusicPlayerController {
         }
     }
 
+    // Format duration to MM:SS
     private String formatTime(Duration duration) {
         int minutes = (int) duration.toMinutes();
         int seconds = (int) duration.toSeconds() % 60;
         return String.format("%02d:%02d", minutes, seconds);
     }
 
+    // Update play/pause/stop button states
     private void updatePlayButtonState() {
         boolean hasPlaylist = !playlist.isEmpty();
         boolean isStopped = currentTrackIndex == -1;
@@ -283,14 +302,15 @@ public class MusicPlayerController {
         }
     }
 
+    // Update track image
     private void updateTrackImage(String trackFile) {
         if (trackImageView == null) {
             return;
         }
-
         trackImageView.setImage(TrackMediaResolver.loadTrackImage(null, trackFile));
     }
 
+    // Show error message
     private void showError(String message) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setHeaderText(null);
@@ -298,11 +318,12 @@ public class MusicPlayerController {
         alert.showAndWait();
     }
 
+    // Get media error message
     private String getMediaErrorMessage(MediaException exception) {
         if (exception == null) {
             return "Unknown media error";
         }
         String detail = exception.getMessage();
-        return detail == null || detail.isBlank() ? exception.getType().name() : detail;
+        return detail == null || detail.isEmpty() ? exception.getType().name() : detail;
     }
 }

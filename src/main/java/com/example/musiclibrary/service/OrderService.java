@@ -18,65 +18,86 @@ import com.example.musiclibrary.db.DBConnectionManager;
 
 public class OrderService {
 
-    private final OrderDao orderDao = new OrderDao();
-    private final OrderItemDao orderItemDao = new OrderItemDao();
-    private final TrackDao trackDao = new TrackDao();
+    private OrderDao orderDao;
+    private OrderItemDao orderItemDao;
+    private TrackDao trackDao;
 
+    public OrderService() {
+        orderDao = new OrderDao();
+        orderItemDao = new OrderItemDao();
+        trackDao = new TrackDao();
+    }
+
+    // Create a new order with cart items
     public Order createOrder(int customerId, int userId, List<OrderItem> cartItems, String shippingCity) throws SQLException {
         if (cartItems == null || cartItems.isEmpty()) {
             throw new IllegalArgumentException("Cart is empty");
         }
 
-        try (Connection conn = DBConnectionManager.getConnection()) {
-            try {
-                conn.setAutoCommit(false);
+        Connection conn = DBConnectionManager.getConnection();
+        Order order = null;
 
-                BigDecimal total = BigDecimal.ZERO;
-                List<OrderItem> itemsToInsert = new ArrayList<>();
+        try {
+            // Start transaction
+            conn.setAutoCommit(false);
 
-                for (OrderItem item : cartItems) {
-                    Track track = trackDao.findById(conn, item.getTrackId());
-                    if (track == null || !track.isActive()) {
-                        throw new SQLException("Track not available: " + item.getTrackId());
-                    }
-                    if (item.getQuantity() <= 0 || item.getQuantity() > track.getStockQty()) {
-                        throw new SQLException("Invalid quantity for track " + track.getTitle());
-                    }
-                    BigDecimal lineTotal = track.getPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
-                    item.setUnitPrice(track.getPrice());
-                    item.setLineTotal(lineTotal);
-                    total = total.add(lineTotal);
-                    itemsToInsert.add(item);
+            BigDecimal total = BigDecimal.ZERO;
+            List<OrderItem> itemsToInsert = new ArrayList<>();
 
-                    int newStock = track.getStockQty() - item.getQuantity();
-                    trackDao.updateStock(conn, track.getId(), newStock);
+            // Process each cart item
+            for (OrderItem item : cartItems) {
+                Track track = trackDao.findById(item.getTrackId());
+
+                // Validate track
+                if (track == null || !track.isActive()) {
+                    throw new SQLException("Track not available: " + item.getTrackId());
                 }
 
-                Order order = new Order();
-                order.setCustomerId(customerId);
-                order.setUserId(userId);
-                order.setOrderDate(LocalDateTime.now());
-                order.setStatus("PENDING");
-                order.setTotalAmount(total);
-                order.setShippingCity(shippingCity);
-
-                int orderId = orderDao.insert(conn, order);
-                order.setId(orderId);
-
-                for (OrderItem item : itemsToInsert) {
-                    item.setOrderId(orderId);
+                // Validate quantity
+                if (item.getQuantity() <= 0 || item.getQuantity() > track.getStockQty()) {
+                    throw new SQLException("Invalid quantity for track " + track.getTitle());
                 }
-                orderItemDao.insertBatch(conn, itemsToInsert);
 
-                conn.commit();
-                return order;
-            } catch (SQLException | RuntimeException ex) {
-                conn.rollback();
-                throw ex;
-            } finally {
-                conn.setAutoCommit(true);
+                // Calculate line total
+                BigDecimal lineTotal = track.getPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
+                item.setUnitPrice(track.getPrice());
+                item.setLineTotal(lineTotal);
+                total = total.add(lineTotal);
+                itemsToInsert.add(item);
+
+                // Update stock
+                int newStock = track.getStockQty() - item.getQuantity();
+                trackDao.updateStock(track.getId(), newStock);
             }
+
+            // Create order
+            order = new Order();
+            order.setCustomerId(customerId);
+            order.setUserId(userId);
+            order.setOrderDate(LocalDateTime.now());
+            order.setStatus("PENDING");
+            order.setTotalAmount(total);
+            order.setShippingCity(shippingCity);
+
+            int orderId = orderDao.insert(order);
+            order.setId(orderId);
+
+            // Insert order items
+            for (OrderItem item : itemsToInsert) {
+                item.setOrderId(orderId);
+            }
+            orderItemDao.insertBatch(itemsToInsert);
+
+            // Commit transaction
+            conn.commit();
+            return order;
+        } catch (SQLException | RuntimeException ex) {
+            // Rollback on error
+            conn.rollback();
+            throw ex;
+        } finally {
+            conn.setAutoCommit(true);
+            conn.close();
         }
     }
 }
-

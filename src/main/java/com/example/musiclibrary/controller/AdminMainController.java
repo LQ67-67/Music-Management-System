@@ -315,18 +315,18 @@ public class AdminMainController {
         switch (reportType) {
             case "Sales by Genre":
                 sql = "SELECT t.genre, SUM(oi.quantity) as qty, SUM(oi.line_total) as total " +
-                      "FROM order_items oi JOIN tracks t ON oi.track_id = t.id " +
-                      "GROUP BY t.genre ORDER BY total DESC";
+                        "FROM order_items oi JOIN tracks t ON oi.track_id = t.id " +
+                        "GROUP BY t.genre ORDER BY total DESC";
                 categoryColumn = "Genre";
                 break;
             case "Sales by City":
                 sql = "SELECT o.shipping_city, COUNT(o.id) as orders, SUM(o.total_amount) as total " +
-                      "FROM orders o GROUP BY o.shipping_city ORDER BY total DESC";
+                        "FROM orders o GROUP BY o.shipping_city ORDER BY total DESC";
                 categoryColumn = "City";
                 break;
             case "Sales by Date":
                 sql = "SELECT DATE(order_date) as order_date, COUNT(id) as orders, SUM(total_amount) as total " +
-                      "FROM orders GROUP BY DATE(order_date) ORDER BY order_date DESC";
+                        "FROM orders GROUP BY DATE(order_date) ORDER BY order_date DESC";
                 categoryColumn = "Date";
                 break;
             default:
