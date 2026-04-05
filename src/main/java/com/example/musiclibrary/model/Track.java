@@ -11,8 +11,6 @@ public class Track {
     private BigDecimal price;
     private int stockQty;
     private boolean active;
-    private String imagePath;
-    private String musicFilePath;
 
     // ...existing getters and setters for id, title, artist, album, genre, price, stockQty, active...
 
@@ -78,22 +76,6 @@ public class Track {
 
     public void setActive(boolean active) {
         this.active = active;
-    }
-
-    public String getImagePath() {
-        return imagePath;
-    }
-
-    public void setImagePath(String imagePath) {
-        this.imagePath = imagePath;
-    }
-
-    public String getMusicFilePath() {
-        return musicFilePath;
-    }
-
-    public void setMusicFilePath(String musicFilePath) {
-        this.musicFilePath = musicFilePath;
     }
 }
 

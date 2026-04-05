@@ -117,8 +117,6 @@ public final class TrackMediaResolver {
             addIfPresent(candidates, track.getTitle());
             addIfPresent(candidates, track.getAlbum());
             addIfPresent(candidates, track.getArtist());
-            addIfPresent(candidates, track.getImagePath());
-            addIfPresent(candidates, track.getMusicFilePath());
         }
         return candidates.stream()
                 .filter(Objects::nonNull)
