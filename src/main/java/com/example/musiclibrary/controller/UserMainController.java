@@ -268,6 +268,7 @@ public class UserMainController {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/MusicPlayerView.fxml"));
             Scene scene = new Scene(loader.load(), 600, 500);
+            MusicPlayerController controller = loader.getController();
             Stage stage = new Stage();
             stage.setTitle("Music Player");
             stage.initModality(Modality.WINDOW_MODAL);
@@ -275,6 +276,12 @@ public class UserMainController {
             stage.setScene(scene);
             stage.setMinWidth(500);
             stage.setMinHeight(400);
+
+            // Add window close listener to stop playback
+            stage.setOnCloseRequest(event -> {
+                controller.dispose();
+            });
+
             stage.showAndWait();
         } catch (Exception e) {
             e.printStackTrace();

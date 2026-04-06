@@ -132,6 +132,9 @@ public class MusicPlayerController {
         if (mediaPlayer != null && isPlaying) {
             mediaPlayer.pause();
             isPlaying = false;
+            if (updateTimer != null) {
+                updateTimer.stop();
+            }
             updatePlayButtonState();
         }
     }
@@ -313,5 +316,18 @@ public class MusicPlayerController {
         }
         String detail = exception.getMessage();
         return detail == null || detail.isEmpty() ? exception.getType().name() : detail;
+    }
+
+    // Dispose method to clean up resources when window is closed
+    public void dispose() {
+        if (updateTimer != null) {
+            updateTimer.stop();
+        }
+        if (mediaPlayer != null) {
+            mediaPlayer.stop();
+            mediaPlayer.dispose();
+            mediaPlayer = null;
+        }
+        isPlaying = false;
     }
 }
