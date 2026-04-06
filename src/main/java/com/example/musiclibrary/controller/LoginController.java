@@ -160,6 +160,14 @@ public class LoginController {
                 // Create new user in database
                 userDao.create(newUsername, newPassword, "USER");
                 dialog.close();
+                
+                // Show success alert
+                Alert successAlert = new Alert(Alert.AlertType.INFORMATION);
+                successAlert.setTitle("Registration Successful");
+                successAlert.setHeaderText(null);
+                successAlert.setContentText("User '" + newUsername + "' has been successfully registered!");
+                successAlert.showAndWait();
+                
                 infoLabel.setText("Registration successful! Please login.");
                 errorLabel.setText("");
             } catch (SQLException ex) {

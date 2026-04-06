@@ -169,7 +169,7 @@ public final class TrackMediaResolver {
                             }
                         });
                     }
-                    files.sort(String::compareTo);
+                    files.sort(TrackMediaResolver::naturalCompare);
                     return files;
                 }
             }
@@ -191,7 +191,7 @@ public final class TrackMediaResolver {
                         }
                     });
                 }
-                files.sort(String::compareTo);
+                files.sort(TrackMediaResolver::naturalCompare);
                 return files;
             } catch (Exception ignored) {
             }
@@ -220,5 +220,25 @@ public final class TrackMediaResolver {
         String simpleName = slashIndex >= 0 ? fileName.substring(slashIndex + 1) : fileName;
         int dotIndex = simpleName.lastIndexOf('.');
         return dotIndex > 0 ? simpleName.substring(0, dotIndex) : simpleName;
+    }
+
+    // Natural comparison for file names (sort by numeric value when applicable)
+    private static int naturalCompare(String s1, String s2) {
+        if (s1 == null && s2 == null) return 0;
+        if (s1 == null) return -1;
+        if (s2 == null) return 1;
+
+        String name1 = baseName(s1);
+        String name2 = baseName(s2);
+
+        // Try to parse as numbers
+        try {
+            Long num1 = Long.parseLong(name1);
+            Long num2 = Long.parseLong(name2);
+            return num1.compareTo(num2);
+        } catch (NumberFormatException e) {
+            // Fall back to string comparison
+            return name1.compareTo(name2);
+        }
     }
 }
