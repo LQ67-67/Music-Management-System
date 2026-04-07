@@ -12,7 +12,7 @@ DROP TABLE IF EXISTS tracks;
 DROP TABLE IF EXISTS customers;
 DROP TABLE IF EXISTS users;
 
--- 用户表：包含普通用户和管理员
+-- User table: contains regular users and administrators
 CREATE TABLE users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(50) NOT NULL UNIQUE,
@@ -21,7 +21,7 @@ CREATE TABLE users (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- 客户表（可以与 users 关联，也可以单独使用）
+-- Customer table (can be associated with users or used separately)
 CREATE TABLE customers (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
@@ -31,7 +31,7 @@ CREATE TABLE customers (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- 音乐曲目主数据
+-- musicTrackMasterData
 CREATE TABLE tracks (
     id INT AUTO_INCREMENT PRIMARY KEY,
     title VARCHAR(200) NOT NULL,
@@ -45,7 +45,7 @@ CREATE TABLE tracks (
     updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP
 );
 
--- 订单主表
+-- orderMasterTable
 CREATE TABLE orders (
     id INT AUTO_INCREMENT PRIMARY KEY,
     customer_id INT NOT NULL,
@@ -65,7 +65,7 @@ CREATE TABLE orders (
         ON UPDATE CASCADE ON DELETE RESTRICT
 );
 
--- 订单明细表
+-- orderSchedule
 CREATE TABLE order_items (
     id INT AUTO_INCREMENT PRIMARY KEY,
     order_id INT NOT NULL,
@@ -83,7 +83,7 @@ CREATE TABLE order_items (
 
 SET FOREIGN_KEY_CHECKS = 1;
 
--- 基础测试数据
+-- basicTestData
 INSERT INTO users (username, password_hash, role) VALUES
 ('admin', 'admin', 'ADMIN'),
 ('user1', 'user1', 'USER');
