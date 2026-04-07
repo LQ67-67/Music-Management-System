@@ -4,13 +4,13 @@ import com.example.musiclibrary.dao.UserDao;
 import com.example.musiclibrary.model.User;
 import com.example.musiclibrary.session.SessionManager;
 
-import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
+import javafx.scene.control.TextFormatter;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.layout.GridPane;
@@ -23,8 +23,14 @@ import javafx.stage.Stage;
 
 import java.net.URL;
 import java.sql.SQLException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class LoginController {
+
+    private static final Logger LOGGER = Logger.getLogger(LoginController.class.getName());
+    private static final int USERNAME_MAX_LEN = 20;
+    private static final int PASSWORD_MAX_LEN = 30;
 
     @FXML
     private TextField usernameField;
@@ -44,33 +50,26 @@ public class LoginController {
     @FXML
     private void initialize() {
         userDao = new UserDao();
-        // Limit username to 20 characters
-        limitTextFieldLength(usernameField, 20);
-        // Limit password to 30 characters
-        limitPasswordFieldLength(passwordField, 30);
+        // Limit username/password length at input time.
+        limitUsernameFieldLength(usernameField);
+        limitPasswordFieldLength(passwordField);
     }
 
     // Helper method to limit text field length
-    private void limitTextFieldLength(TextField field, int maxLen) {
-        field.textProperty().addListener((obs, oldVal, newVal) -> {
-            if (newVal != null && newVal.length() > maxLen) {
-                field.setText(oldVal);
-            }
-        });
+    private void limitUsernameFieldLength(TextField field) {
+        field.setTextFormatter(new TextFormatter<String>(change ->
+                change.getControlNewText().length() <= USERNAME_MAX_LEN ? change : null));
     }
 
     // Helper method to limit password field length
-    private void limitPasswordFieldLength(PasswordField field, int maxLen) {
-        field.textProperty().addListener((obs, oldVal, newVal) -> {
-            if (newVal != null && newVal.length() > maxLen) {
-                field.setText(oldVal);
-            }
-        });
+    private void limitPasswordFieldLength(PasswordField field) {
+        field.setTextFormatter(new TextFormatter<String>(change ->
+                change.getControlNewText().length() <= PASSWORD_MAX_LEN ? change : null));
     }
 
     // Handle login button click
     @FXML
-    private void handleLogin(ActionEvent event) {
+    private void handleLogin() {
         String username = usernameField.getText();
         String password = passwordField.getText();
 
@@ -110,27 +109,28 @@ public class LoginController {
         }
     }
 
-    // Handle forgot password button click
-    @FXML
-    private void handleForgotPassword(ActionEvent event) {
-        infoLabel.setText("Password reset feature coming soon. Please contact administrator.");
-        errorLabel.setText("");
-    }
-
     // Handle register button click - show registration dialog
     @FXML
-    private void handleRegister(ActionEvent event) {
+    private void handleRegister() {
         Stage dialog = new Stage();
         dialog.initModality(Modality.APPLICATION_MODAL);
         dialog.setTitle("Register New User");
+        dialog.setMinWidth(450);
+        dialog.setMinHeight(250);
+        dialog.setResizable(true);
 
         TextField newUsernameField = new TextField();
         PasswordField newPasswordField = new PasswordField();
         PasswordField confirmField = new PasswordField();
 
+        // Make input controls wider so the dialog feels roomier.
+        newUsernameField.setPrefWidth(300);
+        newPasswordField.setPrefWidth(300);
+        confirmField.setPrefWidth(300);
+
         GridPane grid = new GridPane();
-        grid.setHgap(10);
-        grid.setVgap(10);
+        grid.setHgap(14);
+        grid.setVgap(14);
         grid.setPadding(new Insets(20));
         grid.add(new Label("Username:"), 0, 0);
         grid.add(newUsernameField, 1, 0);
@@ -140,7 +140,8 @@ public class LoginController {
         grid.add(confirmField, 1, 2);
 
         Button registerBtn = new Button("Register");
-        registerBtn.setOnAction(e -> {
+        registerBtn.setOnAction(actionEvent -> {
+            actionEvent.consume();
             String newUsername = newUsernameField.getText();
             String newPassword = newPasswordField.getText();
             String confirmPass = confirmField.getText();
@@ -180,14 +181,19 @@ public class LoginController {
         });
 
         Button cancelBtn = new Button("Cancel");
-        cancelBtn.setOnAction(e -> dialog.close());
+        cancelBtn.setOnAction(actionEvent -> {
+            actionEvent.consume();
+            dialog.close();
+        });
 
-        HBox buttonBox = new HBox(10, registerBtn, cancelBtn);
+        HBox buttonBox = new HBox(16, registerBtn, cancelBtn);
         buttonBox.setAlignment(Pos.CENTER);
 
-        VBox vbox = new VBox(10, grid, buttonBox);
-        Scene scene = new Scene(vbox);
+        VBox vbox = new VBox(16, grid, buttonBox);
+        vbox.setPadding(new Insets(20));
+        Scene scene = new Scene(vbox, 450, 250);
         dialog.setScene(scene);
+        dialog.centerOnScreen();
         dialog.showAndWait();
     }
 
@@ -217,7 +223,7 @@ public class LoginController {
             stage.setResizable(true);
             stage.centerOnScreen();
         } catch (Exception e) {
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Failed to open scene: " + fxmlPath, e);
             String msg = e.getMessage();
             errorLabel.setText("Failed to open main window: " + (msg == null ? "" : msg));
         }
