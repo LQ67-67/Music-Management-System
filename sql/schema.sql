@@ -1,5 +1,5 @@
 -- Music Library Management System - MySQL Schema
--- Coursework: COMP1322 Sem2 2025/2026
+-- Coursework: COMP1322 Sem2
 
 -- CREATE DATABASE music_library CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -14,47 +14,47 @@ DROP TABLE IF EXISTS users;
 
 -- 用户表：包含普通用户和管理员
 CREATE TABLE users (
-    id           INT AUTO_INCREMENT PRIMARY KEY,
-    username     VARCHAR(50)  NOT NULL UNIQUE,
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
-    role         ENUM('USER', 'ADMIN') NOT NULL DEFAULT 'USER',
-    created_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    role ENUM('USER', 'ADMIN') NOT NULL DEFAULT 'USER',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 客户表（可以与 users 关联，也可以单独使用）
 CREATE TABLE customers (
-    id         INT AUTO_INCREMENT PRIMARY KEY,
-    name       VARCHAR(100) NOT NULL,
-    email      VARCHAR(100),
-    phone      VARCHAR(50),
-    city       VARCHAR(100),
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(100),
+    phone VARCHAR(50),
+    city VARCHAR(100),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 音乐曲目主数据
 CREATE TABLE tracks (
-    id          INT AUTO_INCREMENT PRIMARY KEY,
-    title       VARCHAR(200) NOT NULL,
-    artist      VARCHAR(200) NOT NULL,
-    album       VARCHAR(200),
-    genre       VARCHAR(100),
-    price       DECIMAL(10,2) NOT NULL DEFAULT 0,
-    stock_qty   INT NOT NULL DEFAULT 0,
-    is_active   TINYINT(1) NOT NULL DEFAULT 1,
-    created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at  TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(200) NOT NULL,
+    artist VARCHAR(200) NOT NULL,
+    album VARCHAR(200),
+    genre VARCHAR(100),
+    price DECIMAL(10,2) NOT NULL DEFAULT 0,
+    stock_qty INT NOT NULL DEFAULT 0,
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP
 );
 
 -- 订单主表
 CREATE TABLE orders (
-    id             INT AUTO_INCREMENT PRIMARY KEY,
-    customer_id    INT NOT NULL,
-    user_id        INT NOT NULL,
-    order_date     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    status         ENUM('PENDING', 'CONFIRMED', 'CANCELLED') NOT NULL DEFAULT 'PENDING',
-    total_amount   DECIMAL(10,2) NOT NULL DEFAULT 0,
-    shipping_city  VARCHAR(100),
-    created_at     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    customer_id INT NOT NULL,
+    user_id INT NOT NULL,
+    order_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    status ENUM('PENDING', 'CONFIRMED', 'CANCELLED') NOT NULL DEFAULT 'PENDING',
+    total_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+    shipping_city VARCHAR(100),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     -- When an order is deleted, the customer and user are not deleted, and the customer and user are updated in a cascade when the order is updated
     CONSTRAINT fk_orders_customer
         FOREIGN KEY (customer_id) REFERENCES customers(id)
@@ -67,12 +67,12 @@ CREATE TABLE orders (
 
 -- 订单明细表
 CREATE TABLE order_items (
-    id          INT AUTO_INCREMENT PRIMARY KEY,
-    order_id    INT NOT NULL,
-    track_id    INT NOT NULL,
-    quantity    INT NOT NULL,
-    unit_price  DECIMAL(10,2) NOT NULL,
-    line_total  DECIMAL(10,2) NOT NULL,
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    order_id INT NOT NULL,
+    track_id INT NOT NULL,
+    quantity INT NOT NULL,
+    unit_price DECIMAL(10,2) NOT NULL,
+    line_total DECIMAL(10,2) NOT NULL,
     CONSTRAINT fk_items_order
         FOREIGN KEY (order_id) REFERENCES orders(id)
         ON UPDATE CASCADE ON DELETE CASCADE,
