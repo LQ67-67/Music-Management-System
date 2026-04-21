@@ -10,12 +10,17 @@ import java.io.InputStream;
 
 public class MusicLibraryApp extends Application {
 
+    public static final double LOGIN_SCENE_WIDTH = 500;
+    public static final double LOGIN_SCENE_HEIGHT = 340;
+    public static final double LOGIN_MIN_WIDTH = 420;
+    public static final double LOGIN_MIN_HEIGHT = 280;
+
     @Override
     public void start(Stage primaryStage) throws Exception {
         FXMLLoader loader = new FXMLLoader(
                 getClass().getResource("/fxml/LoginView.fxml")
         );
-        Scene scene = new Scene(loader.load(), 500, 340);
+        Scene scene = new Scene(loader.load(), LOGIN_SCENE_WIDTH, LOGIN_SCENE_HEIGHT);
         primaryStage.setTitle("Music Library Management System");
         primaryStage.setScene(scene);
         try (InputStream iconStream = getClass().getResourceAsStream("/images/music.png")) {
@@ -23,8 +28,8 @@ public class MusicLibraryApp extends Application {
                 primaryStage.getIcons().add(new Image(iconStream));
             }
         }
-        primaryStage.setMinWidth(420);
-        primaryStage.setMinHeight(280);
+        primaryStage.setMinWidth(LOGIN_MIN_WIDTH);
+        primaryStage.setMinHeight(LOGIN_MIN_HEIGHT);
         primaryStage.setResizable(true);
         primaryStage.show();
     }

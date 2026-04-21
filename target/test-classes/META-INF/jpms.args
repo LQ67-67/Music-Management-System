@@ -1,0 +1,4 @@
+--patch-module
+com.example.musiclibrary=_
+--add-reads
+com.example.musiclibrary=ALL-UNNAMED

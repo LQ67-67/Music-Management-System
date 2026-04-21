@@ -3,6 +3,7 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Spinner?>
 <?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.control.TableView?>
 <?import javafx.scene.control.TextField?>
@@ -25,6 +26,7 @@
             <children>
                 <Label text="Music Library - User" styleClass="title-label"/>
                 <Label fx:id="welcomeLabel"/>
+                <Button text="Logout" onAction="#handleLogout"/>
             </children>
         </HBox>
     </top>
@@ -40,6 +42,8 @@
                         <Label text="Search:"/>
                         <TextField fx:id="searchField" promptText="Title or artist"/>
                         <Button text="Search" onAction="#handleSearch"/>
+                        <Label text="Quantity:"/>
+                        <Spinner fx:id="quantitySpinner" prefWidth="80" editable="true" initialValue="1" min="1" max="99"/>
                     </children>
                 </HBox>
 
