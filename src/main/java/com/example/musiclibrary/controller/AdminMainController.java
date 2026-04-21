@@ -63,7 +63,7 @@ public class AdminMainController {
     // Tracks Tab
     private VBox buildTracksTabContent() {
         TableView<Track> trackTable = new TableView<>(trackData);
-        trackTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        trackTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
 
         TableColumn<Track, Track> imageCol = new TableColumn<>("Image");
         imageCol.setCellValueFactory(d -> new javafx.beans.property.SimpleObjectProperty<>(d.getValue()));
@@ -87,13 +87,18 @@ public class AdminMainController {
             BigDecimal p = d.getValue().getPrice();
             return p == null ? "" : p.toPlainString();
         });
-        TableColumn<Track, String> stockCol = makeCol("Stock",d -> String.valueOf(d.getValue().getStockQty()));
+        TableColumn<Track, String> stockCol  = makeCol("Stock",  d -> String.valueOf(d.getValue().getStockQty()));
 
-        trackTable.getColumns().addAll(imageCol, titleCol, artistCol, albumCol, genreCol, priceCol, stockCol);
-        VBox.setVgrow(trackTable, Priority.ALWAYS);
+        trackTable.getColumns().add(imageCol);
+        trackTable.getColumns().add(titleCol);
+        trackTable.getColumns().add(artistCol);
+        trackTable.getColumns().add(albumCol);
+        trackTable.getColumns().add(genreCol);
+        trackTable.getColumns().add(priceCol);
+        trackTable.getColumns().add(stockCol);
 
-        Button addBtn = new Button("Add Track");
-        Button editBtn = new Button("Edit Track");
+        Button addBtn    = new Button("Add Track");
+        Button editBtn   = new Button("Edit Track");
         Button deleteBtn = new Button("Delete Track");
 
         addBtn.setOnAction(e -> showTrackDialog(null));
@@ -106,9 +111,7 @@ public class AdminMainController {
             if (sel != null) deleteTrack(sel); else showError("Please select a track to delete.");
         });
 
-        VBox box = new VBox(10, new Label("Track List"), trackTable, new HBox(10, addBtn, editBtn, deleteBtn));
-        box.setPadding(new Insets(12));
-        return box;
+        return makeTabBox(new Label("Track List"), trackTable, new HBox(10, addBtn, editBtn, deleteBtn));
     }
 
     private void loadTracks() {
@@ -116,7 +119,7 @@ public class AdminMainController {
         catch (SQLException e) { showError("Failed to load tracks: " + e.getMessage()); }
     }
 
-    // open add/edit dialog; pass null to add a new track
+    // Open add/edit dialog; pass null to add a new track
     private void showTrackDialog(Track track) {
         Stage dialog = new Stage();
         dialog.initModality(Modality.APPLICATION_MODAL);
@@ -130,12 +133,12 @@ public class AdminMainController {
         TextField stockField = new TextField(track == null ? "" : String.valueOf(track.getStockQty()));
 
         GridPane grid = makeGrid();
-        grid.add(new Label("Title:"),0, 0); grid.add(titleField,1, 0);
-        grid.add(new Label("Artist:"),0, 1); grid.add(artistField,1, 1);
-        grid.add(new Label("Album:"),0, 2); grid.add(albumField,1, 2);
-        grid.add(new Label("Genre:"),0, 3); grid.add(genreField,1, 3);
-        grid.add(new Label("Price:"),0, 4); grid.add(priceField,1, 4);
-        grid.add(new Label("Stock:"),0, 5); grid.add(stockField,1, 5);
+        grid.add(new Label("Title:"),0,0);grid.add(titleField,1,0);
+        grid.add(new Label("Artist:"),0,1);grid.add(artistField,1,1);
+        grid.add(new Label("Album:"),0,2);grid.add(albumField,1,2);
+        grid.add(new Label("Genre:"),0,3);grid.add(genreField,1,3);
+        grid.add(new Label("Price:"),0,4);grid.add(priceField,1,4);
+        grid.add(new Label("Stock:"),0,5);grid.add(stockField,1,5);
 
         Button saveBtn = new Button("Save");
         saveBtn.setOnAction(e -> {
@@ -159,13 +162,7 @@ public class AdminMainController {
             }
         });
 
-        Button cancelBtn = new Button("Cancel");
-        cancelBtn.setOnAction(e -> dialog.close());
-
-        HBox buttons = new HBox(10, saveBtn, cancelBtn);
-        buttons.setAlignment(Pos.CENTER);
-        dialog.setScene(new Scene(new VBox(10, grid, buttons)));
-        dialog.showAndWait();
+        showDialog(dialog, grid, saveBtn);
     }
 
     private void deleteTrack(Track track) {
@@ -174,17 +171,14 @@ public class AdminMainController {
     }
 
     // Customers Tab
-
     private VBox buildCustomersTabContent() {
         TableView<Customer> customerTable = new TableView<>(customerData);
-        customerTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        customerTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
 
-        customerTable.getColumns().addAll(
-                makeCol("Name",d -> d.getValue().getName()),
-                makeCol("Email",d -> d.getValue().getEmail()),
-                makeCol("Phone",d -> d.getValue().getPhone()),
-                makeCol("City",d -> d.getValue().getCity())
-        );
+        customerTable.getColumns().add(makeCol("Name",d -> d.getValue().getName()));
+        customerTable.getColumns().add(makeCol("Email",d -> d.getValue().getEmail()));
+        customerTable.getColumns().add(makeCol("Phone",d -> d.getValue().getPhone()));
+        customerTable.getColumns().add(makeCol("City",d -> d.getValue().getCity()));
 
         Button addBtn = new Button("Add Customer");
         Button editBtn = new Button("Edit Customer");
@@ -200,9 +194,7 @@ public class AdminMainController {
             if (sel != null) deleteCustomer(sel); else showError("Please select a customer to delete.");
         });
 
-        VBox box = new VBox(10, new Label("Customer List"), customerTable, new HBox(10, addBtn, editBtn, deleteBtn));
-        box.setPadding(new Insets(12));
-        return box;
+        return makeTabBox(new Label("Customer List"), customerTable, new HBox(10, addBtn, editBtn, deleteBtn));
     }
 
     private void loadCustomers() {
@@ -210,7 +202,7 @@ public class AdminMainController {
         catch (SQLException e) { showError("Failed to load customers: " + e.getMessage()); }
     }
 
-    // Open add/edit dialog; pass null to add a new customer
+    // open add/edit dialog; pass null to add a new customer
     private void showCustomerDialog(Customer customer) {
         Stage dialog = new Stage();
         dialog.initModality(Modality.APPLICATION_MODAL);
@@ -222,10 +214,10 @@ public class AdminMainController {
         TextField cityField = new TextField(customer == null ? "" : customer.getCity());
 
         GridPane grid = makeGrid();
-        grid.add(new Label("Name:"),0, 0); grid.add(nameField,1,0);
-        grid.add(new Label("Email:"),0, 1); grid.add(emailField,1,1);
-        grid.add(new Label("Phone:"),0, 2); grid.add(phoneField,1,2);
-        grid.add(new Label("City:"),0, 3); grid.add(cityField,1,3);
+        grid.add(new Label("Name:"),0,0);grid.add(nameField,  1, 0);
+        grid.add(new Label("Email:"),0,1);grid.add(emailField, 1, 1);
+        grid.add(new Label("Phone:"),0,2);grid.add(phoneField, 1, 2);
+        grid.add(new Label("City:"),0,3);grid.add(cityField,  1, 3);
 
         Button saveBtn = new Button("Save");
         saveBtn.setOnAction(e -> {
@@ -242,13 +234,7 @@ public class AdminMainController {
             }
         });
 
-        Button cancelBtn = new Button("Cancel");
-        cancelBtn.setOnAction(e -> dialog.close());
-
-        HBox buttons = new HBox(10, saveBtn, cancelBtn);
-        buttons.setAlignment(Pos.CENTER);
-        dialog.setScene(new Scene(new VBox(10, grid, buttons)));
-        dialog.showAndWait();
+        showDialog(dialog, grid, saveBtn);
     }
 
     private void deleteCustomer(Customer customer) {
@@ -259,14 +245,14 @@ public class AdminMainController {
     // Orders Tab
     private VBox buildOrdersTabContent() {
         TableView<String[]> orderTable = new TableView<>(orderData);
-        orderTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        orderTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
 
         // each row is a String[7]: id, username, customer name, date, status, total, city
         String[] headers = {"Order ID", "Username", "Customer Name", "Order Date", "Status", "Total", "Shipping City"};
         for (int i = 0; i < headers.length; i++) {
-            final int col = i;
+            final int idx = i;
             TableColumn<String[], String> c = new TableColumn<>(headers[i]);
-            c.setCellValueFactory(d -> new SimpleStringProperty(d.getValue()[col]));
+            c.setCellValueFactory(d -> new SimpleStringProperty(d.getValue()[idx]));
             orderTable.getColumns().add(c);
         }
 
@@ -276,9 +262,7 @@ public class AdminMainController {
             if (sel != null) showOrderEditDialog(sel); else showError("Please select an order to edit.");
         });
 
-        VBox box = new VBox(10, new Label("All Orders"), orderTable, new HBox(10, editBtn));
-        box.setPadding(new Insets(12));
-        return box;
+        return makeTabBox(new Label("All Orders"), orderTable, new HBox(10, editBtn));
     }
 
     // open dialog to edit the status and shipping city of the selected order
@@ -294,8 +278,8 @@ public class AdminMainController {
         TextField cityField = new TextField(row[6] == null ? "" : row[6]);
 
         GridPane grid = makeGrid();
-        grid.add(new Label("Status:"),0,0); grid.add(statusBox,1,0);
-        grid.add(new Label("Shipping City:"),0,1); grid.add(cityField,1,1);
+        grid.add(new Label("Status:"),0,0);grid.add(statusBox,1,0);
+        grid.add(new Label("Shipping City:"),0,1);grid.add(cityField,1,1);
 
         Button saveBtn = new Button("Save");
         saveBtn.setOnAction(e -> {
@@ -313,20 +297,12 @@ public class AdminMainController {
             }
         });
 
-        Button cancelBtn = new Button("Cancel");
-        cancelBtn.setOnAction(e -> dialog.close());
-
-        HBox buttons = new HBox(10, saveBtn, cancelBtn);
-        buttons.setAlignment(Pos.CENTER);
-        dialog.setScene(new Scene(new VBox(10, grid, buttons)));
-        dialog.showAndWait();
+        showDialog(dialog, grid, saveBtn);
     }
 
-    // Load all orders from DB (joins users and customers tables)
+    // loading all orders from DB (joins users and customers tables)
     private void loadOrders() {
-        String sql = "SELECT o.id, u.username, c.name, o.order_date, o.status, o.total_amount, o.shipping_city " +
-                "FROM orders o JOIN users u ON o.user_id = u.id JOIN customers c ON o.customer_id = c.id " +
-                "ORDER BY o.order_date DESC";
+        String sql = "SELECT o.id, u.username, c.name, o.order_date, o.status, o.total_amount, o.shipping_city " + "FROM orders o JOIN users u ON o.user_id = u.id JOIN customers c ON o.customer_id = c.id " + "ORDER BY o.order_date DESC";
         try (Connection conn = DBConnectionManager.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
@@ -334,8 +310,12 @@ public class AdminMainController {
             ObservableList<String[]> rows = FXCollections.observableArrayList();
             while (rs.next()) {
                 rows.add(new String[]{
-                        String.valueOf(rs.getInt("id")), rs.getString("username"), rs.getString("name"),
-                        rs.getTimestamp("order_date").toString(), rs.getString("status"), rs.getBigDecimal("total_amount").toString(),
+                        String.valueOf(rs.getInt("id")),
+                        rs.getString("username"),
+                        rs.getString("name"),
+                        rs.getTimestamp("order_date").toString(),
+                        rs.getString("status"),
+                        rs.getString("total_amount"),
                         rs.getString("shipping_city")
                 });
             }
@@ -354,7 +334,7 @@ public class AdminMainController {
         Label totalSalesLabel = new Label();
 
         TableView<String> reportTable = new TableView<>();
-        reportTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        reportTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
         reportTable.setPrefHeight(200);
 
         Label avgLabel = new Label();
@@ -395,6 +375,7 @@ public class AdminMainController {
         Label customerCountLabel = (Label) data[1];
         Label orderCountLabel = (Label) data[2];
         Label totalSalesLabel = (Label) data[3];
+        @SuppressWarnings("unchecked")
         TableView<String> reportTable = (TableView<String>) data[4];
         Label avgLabel = (Label) data[5];
         Label sumLabel = (Label) data[6];
@@ -422,14 +403,12 @@ public class AdminMainController {
         loadSalesReport(reportType, reportTable, avgLabel, sumLabel, maxLabel, minLabel);
     }
 
-    // run the selected sales report query and display results with basic statistics
-    private void loadSalesReport(String reportType, TableView<String> reportTable,
-                                 Label avgLabel, Label sumLabel, Label maxLabel, Label minLabel) {
+    // Run the selected sales report query and display results with basic statistics
+    private void loadSalesReport(String reportType, TableView<String> reportTable, Label avgLabel, Label sumLabel, Label maxLabel, Label minLabel) {
         String sql;
         switch (reportType) {
             case "Sales by Genre":
-                sql = "SELECT t.genre, SUM(oi.quantity), SUM(oi.line_total) " + "FROM order_items oi JOIN tracks t ON oi.track_id = t.id " +
-                        "GROUP BY t.genre ORDER BY 3 DESC";
+                sql = "SELECT t.genre, SUM(oi.quantity), SUM(oi.line_total) " + "FROM order_items oi JOIN tracks t ON oi.track_id = t.id " + "GROUP BY t.genre ORDER BY 3 DESC";
                 break;
             case "Sales by City":
                 sql = "SELECT o.shipping_city, COUNT(o.id), SUM(o.total_amount) " + "FROM orders o GROUP BY o.shipping_city ORDER BY 3 DESC";
@@ -453,17 +432,14 @@ public class AdminMainController {
 
             while (rs.next()) {
                 double value = rs.getDouble(3);
-                sum += value;
-                max = Math.max(max, value);
-                min = Math.min(min, value);
-                count++;
+                sum += value; max = Math.max(max, value); min = Math.min(min, value); count++;
                 rows.add(String.format("%s: %.2f", rs.getString(1), value));
             }
 
             reportTable.getColumns().clear();
-            TableColumn<String, String> col = new TableColumn<>("Result");
-            col.setCellValueFactory(d -> new SimpleStringProperty(d.getValue()));
-            reportTable.getColumns().add(col);
+            TableColumn<String, String> resultCol = new TableColumn<>("Result");
+            resultCol.setCellValueFactory(d -> new SimpleStringProperty(d.getValue()));
+            reportTable.getColumns().add(resultCol);
             reportTable.setItems(rows);
 
             if (count > 0) {
@@ -497,8 +473,6 @@ public class AdminMainController {
         }
     }
 
-    // Helpers
-
     // create String column with a lambda for the cell value
     private <T> TableColumn<T, String> makeCol(String title,
                                                javafx.util.Callback<TableColumn.CellDataFeatures<T, String>, String> mapper) {
@@ -521,6 +495,24 @@ public class AdminMainController {
         iv.setFitWidth(80); iv.setFitHeight(80);
         iv.setPreserveRatio(true);
         return iv;
+    }
+
+    // building standard tab VBox: label on top, table in middle (grows), buttons at bottom
+    private VBox makeTabBox(Label heading, Control content, HBox buttons) {
+        VBox.setVgrow(content, Priority.ALWAYS);
+        VBox box = new VBox(10, heading, content, buttons);
+        box.setPadding(new Insets(12));
+        return box;
+    }
+
+    // showing dialog with a grid and a Save button (Cancel added automatically)
+    private void showDialog(Stage dialog, GridPane grid, Button saveBtn) {
+        Button cancelBtn = new Button("Cancel");
+        cancelBtn.setOnAction(e -> dialog.close());
+        HBox buttons = new HBox(10, saveBtn, cancelBtn);
+        buttons.setAlignment(Pos.CENTER);
+        dialog.setScene(new Scene(new VBox(10, grid, buttons)));
+        dialog.showAndWait();
     }
 
     private void showError(String message) {

@@ -40,14 +40,14 @@
                 <HBox spacing="5">
                     <children>
                         <Label text="Search:"/>
-                        <TextField fx:id="searchField" promptText="Title or artist"/>
+                        <TextField fx:id="searchField" promptText="Title or artist" HBox.hgrow="ALWAYS"/>
                         <Button text="Search" onAction="#handleSearch"/>
                         <Label text="Quantity:"/>
                         <Spinner fx:id="quantitySpinner" prefWidth="80" editable="true" initialValue="1" min="1" max="99"/>
                     </children>
                 </HBox>
 
-                <TableView fx:id="trackTable" prefHeight="520">
+                <TableView fx:id="trackTable" VBox.vgrow="ALWAYS">
                     <columns>
                         <TableColumn fx:id="colCover" text="Cover" prefWidth="90"/>
                         <TableColumn fx:id="colTitle" text="Title" prefWidth="150"/>
