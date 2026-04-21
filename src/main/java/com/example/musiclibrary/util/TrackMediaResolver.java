@@ -24,20 +24,20 @@ public final class TrackMediaResolver {
     private TrackMediaResolver() {
     }
 
-    // List all music files in the musics directory
+    // list all music files in the musics directory
     public static List<String> listMusicFiles() {
         return listResourceFileNames(MUSIC_RESOURCE_DIR, AUDIO_EXTENSIONS);
     }
 
-    // Find music file URL by filename
+    // find music file URL by filename
     public static URL findMusicUrl(String fileName) {
-        // Try to load from resources
+        // load from resources
         URL resource = TrackMediaResolver.class.getResource("/" + MUSIC_RESOURCE_DIR + "/" + fileName);
         if (resource != null) {
             return resource;
         }
 
-        // Fallback to file system
+        // fallback to file system
         Path fallback = Paths.get("src/main/resources", MUSIC_RESOURCE_DIR, fileName);
         if (Files.exists(fallback)) {
             try {
@@ -49,7 +49,7 @@ public final class TrackMediaResolver {
         return null;
     }
 
-    // Load track image
+    // load track image
     public static Image loadTrackImage(Track track, String trackFileName) {
         List<String> imageFiles = listResourceFileNames(TRACK_IMAGE_RESOURCE_DIR, IMAGE_EXTENSIONS);
         String matchedFile = findBestImageFile(track, trackFileName, imageFiles);
@@ -63,19 +63,19 @@ public final class TrackMediaResolver {
         return loadImageFromResource(DEFAULT_IMAGE_RESOURCE.substring(1));
     }
 
-    // Find best matching image file for track
+    // find best matching image file for track
     private static String findBestImageFile(Track track, String trackFileName, List<String> imageFiles) {
         if (imageFiles.isEmpty()) {
             return null;
         }
 
-        // Extract base names from image files
+        // extract base names from image files
         List<String> stems = new ArrayList<>();
         for (String file : imageFiles) {
             stems.add(baseName(file));
         }
 
-        // Build candidate names
+        // build candidate names
         List<String> candidates = new ArrayList<>();
         if (trackFileName != null && !trackFileName.isEmpty()) {
             candidates.add(baseName(trackFileName));
@@ -93,7 +93,7 @@ public final class TrackMediaResolver {
             }
         }
 
-        // Try exact match first
+        // exact match first
         for (String candidate : candidates) {
             int index = stems.indexOf(candidate);
             if (index >= 0) {
@@ -101,7 +101,7 @@ public final class TrackMediaResolver {
             }
         }
 
-        // Try partial match
+        // partial match
         for (String candidate : candidates) {
             String normalizedCandidate = candidate.toLowerCase().replaceAll("[^a-z0-9]+", "");
             for (int i = 0; i < stems.size(); i++) {
@@ -114,7 +114,7 @@ public final class TrackMediaResolver {
             }
         }
 
-        // Try numeric match
+        // numeric match
         String trackBaseName = baseName(trackFileName);
         if (trackBaseName.matches("\\d+")) {
             long target = Long.parseLong(trackBaseName);
@@ -132,7 +132,7 @@ public final class TrackMediaResolver {
         return null;
     }
 
-    // Load image from resource path
+    // load image from resource path
     private static Image loadImageFromResource(String resourcePath) {
         InputStream stream = TrackMediaResolver.class.getResourceAsStream("/" + resourcePath);
         if (stream != null) {
@@ -151,7 +151,7 @@ public final class TrackMediaResolver {
         return null;
     }
 
-    // List all files in resource directory with specific extensions
+    // list all files in resource directory with specific extensions
     private static List<String> listResourceFileNames(String resourceDir, List<String> extensions) {
         try {
             URL url = TrackMediaResolver.class.getClassLoader().getResource(resourceDir);
@@ -176,7 +176,7 @@ public final class TrackMediaResolver {
         } catch (Exception ignored) {
         }
 
-        // Fallback to file system
+        // fallback to file system
         Path fallback = Paths.get("src/main/resources", resourceDir);
         if (Files.exists(fallback)) {
             try {
@@ -200,7 +200,7 @@ public final class TrackMediaResolver {
         return new ArrayList<>();
     }
 
-    // Check if filename has any of the given extensions
+    // check if filename has any of the given extensions
     private static boolean hasAnyExtension(String fileName, List<String> extensions) {
         String lower = fileName.toLowerCase();
         for (String ext : extensions) {
@@ -211,7 +211,7 @@ public final class TrackMediaResolver {
         return false;
     }
 
-    // Get base name without extension
+    // get base name without extension
     private static String baseName(String fileName) {
         if (fileName == null || fileName.isEmpty()) {
             return "";
@@ -222,7 +222,7 @@ public final class TrackMediaResolver {
         return dotIndex > 0 ? simpleName.substring(0, dotIndex) : simpleName;
     }
 
-    // Natural comparison for file names (sort by numeric value when applicable)
+    // natural comparison for file names (sort by numeric value when applicable)
     private static int naturalCompare(String s1, String s2) {
         if (s1 == null && s2 == null) return 0;
         if (s1 == null) return -1;
@@ -231,13 +231,13 @@ public final class TrackMediaResolver {
         String name1 = baseName(s1);
         String name2 = baseName(s2);
 
-        // Try to parse as numbers
+        // try to parse as numbers
         try {
             Long num1 = Long.parseLong(name1);
             Long num2 = Long.parseLong(name2);
             return num1.compareTo(num2);
         } catch (NumberFormatException e) {
-            // Fall back to string comparison
+            // fall back to string comparison
             return name1.compareTo(name2);
         }
     }
