@@ -26,7 +26,6 @@ import java.util.List;
 import java.util.Map;
 
 public class OrderManagementController {
-
     @FXML private TableView<Order> orderTable;
     @FXML private TableColumn<Order, Number> colOrderId;
     @FXML private TableColumn<Order, String> colOrderDate;
@@ -152,10 +151,10 @@ public class OrderManagementController {
         TableView<OrderItem> itemTable = new TableView<>(orderItems);
         itemTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
-        TableColumn<OrderItem, String>     trackCol = new TableColumn<>("Track");
-        TableColumn<OrderItem, Number>     qtyCol   = new TableColumn<>("Qty");
+        TableColumn<OrderItem, String> trackCol = new TableColumn<>("Track");
+        TableColumn<OrderItem, Number> qtyCol = new TableColumn<>("Qty");
         TableColumn<OrderItem, BigDecimal> priceCol = new TableColumn<>("Price");
-        TableColumn<OrderItem, BigDecimal> totCol   = new TableColumn<>("Total");
+        TableColumn<OrderItem, BigDecimal> totCol = new TableColumn<>("Total");
 
         trackCol.setCellValueFactory(d -> new SimpleStringProperty(getTrackLabel(d.getValue().getTrackId())));
         qtyCol.setCellValueFactory(d -> new SimpleIntegerProperty(d.getValue().getQuantity()));

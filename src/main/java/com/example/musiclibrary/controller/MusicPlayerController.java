@@ -15,7 +15,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class MusicPlayerController {
-
     @FXML private Label nowPlayingLabel;
     @FXML private Label timeLabel;
     @FXML private Slider progressSlider;

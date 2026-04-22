@@ -29,7 +29,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 
 public class AdminMainController {
-
     @FXML private Label welcomeLabel;
     @FXML private TabPane tabPane;
     @FXML private Tab tracksTab;
@@ -97,8 +96,8 @@ public class AdminMainController {
         trackTable.getColumns().add(priceCol);
         trackTable.getColumns().add(stockCol);
 
-        Button addBtn    = new Button("Add Track");
-        Button editBtn   = new Button("Edit Track");
+        Button addBtn = new Button("Add Track");
+        Button editBtn = new Button("Edit Track");
         Button deleteBtn = new Button("Delete Track");
 
         addBtn.setOnAction(e -> showTrackDialog(null));

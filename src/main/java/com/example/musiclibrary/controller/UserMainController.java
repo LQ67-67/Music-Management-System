@@ -24,7 +24,6 @@ import java.math.BigDecimal;
 import java.sql.SQLException;
 
 public class UserMainController {
-
     @FXML private Label welcomeLabel;
     @FXML private TextField searchField;
     @FXML private TableView<Track> trackTable;

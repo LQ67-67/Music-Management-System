@@ -18,7 +18,6 @@ import java.net.URL;
 import java.sql.SQLException;
 
 public class LoginController {
-
     private static final int USERNAME_MAX_LEN = 20;
     private static final int PASSWORD_MAX_LEN = 30;
 
@@ -33,10 +32,8 @@ public class LoginController {
     private void initialize() {
         userDao = new UserDao();
         // limit how many characters can be typed in each field
-        usernameField.setTextFormatter(new TextFormatter<String>(c ->
-                c.getControlNewText().length() <= USERNAME_MAX_LEN ? c : null));
-        passwordField.setTextFormatter(new TextFormatter<String>(c ->
-                c.getControlNewText().length() <= PASSWORD_MAX_LEN ? c : null));
+        usernameField.setTextFormatter(new TextFormatter<String>(c -> c.getControlNewText().length() <= USERNAME_MAX_LEN ? c : null));
+        passwordField.setTextFormatter(new TextFormatter<String>(c -> c.getControlNewText().length() <= PASSWORD_MAX_LEN ? c : null));
     }
 
     // check credentials and navigate to the correct main screen
