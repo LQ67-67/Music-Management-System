@@ -44,17 +44,18 @@ public class OrderServiceTest {
             items.add(item);
 
             // Create order
-            int orderId = orderService.createOrder(1, 1, items, "Test City");
-            assertTrue(orderId > 0);
+            Order createdOrder = orderService.createOrder(1, 1, items, "Test City");
+            assertNotNull(createdOrder);
+            assertTrue(createdOrder.getId() > 0);
 
             // Verify order was created
-            Order order = orderDao.findById(orderId);
+            Order order = orderDao.findById(createdOrder.getId());
             assertNotNull(order);
             assertEquals("PENDING", order.getStatus());
 
             // Clean up
-            orderItemDao.deleteByOrder(orderId);
-            orderDao.delete(orderId);
+            orderItemDao.deleteByOrder(createdOrder.getId());
+            orderDao.delete(createdOrder.getId());
             trackDao.delete(trackId);
         } catch (SQLException e) {
             fail("Database error: " + e.getMessage());

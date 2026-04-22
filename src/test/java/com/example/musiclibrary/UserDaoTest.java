@@ -39,9 +39,10 @@ public class UserDaoTest {
     @Test
     public void testCreateDuplicateUsername() {
         try {
-            userDao.create("duplicate", "pass1", "USER");
+            String duplicateUsername = "duplicate_" + System.currentTimeMillis();
+            userDao.create(duplicateUsername, "pass1", "USER");
             assertThrows(SQLException.class, () -> {
-                userDao.create("duplicate", "pass2", "USER");
+                userDao.create(duplicateUsername, "pass2", "USER");
             });
         } catch (SQLException e) {
             fail("Database error: " + e.getMessage());

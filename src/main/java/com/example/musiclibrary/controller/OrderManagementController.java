@@ -100,7 +100,7 @@ public class OrderManagementController {
     @FXML
     private void handleConfirmOrder() {
         Order sel = orderTable.getSelectionModel().getSelectedItem();
-        if (sel == null) return;
+        if (sel == null) { showError("Please select an order first."); return; }
         sel.setStatus("CONFIRMED");
         sel.setShippingCity(shippingCityField.getText());
         try { orderDao.update(sel); loadOrders(); }
@@ -111,7 +111,7 @@ public class OrderManagementController {
     @FXML
     private void handleCancelOrder() {
         Order sel = orderTable.getSelectionModel().getSelectedItem();
-        if (sel == null) return;
+        if (sel == null) { showError("Please select an order first."); return; }
         sel.setStatus("CANCELLED");
         try { orderDao.update(sel); loadOrders(); }
         catch (SQLException e) { showError("Failed to cancel order: " + e.getMessage()); }
@@ -121,11 +121,12 @@ public class OrderManagementController {
     @FXML
     private void handleDeleteOrder() {
         Order sel = orderTable.getSelectionModel().getSelectedItem();
-        if (sel == null) return;
+        if (sel == null) { showError("Please select an order first."); return; }
         try {
-            orderItemDao.deleteByOrder(sel.getId());
             orderDao.delete(sel.getId());
             loadOrders();
+            orderItems.clear();
+            shippingCityField.clear();
         } catch (SQLException e) {
             showError("Failed to delete order: " + e.getMessage());
         }
@@ -143,7 +144,7 @@ public class OrderManagementController {
 
         Label orderLabel = new Label("Order #" + sel.getId());
         orderLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
-        Label dateLabel   = new Label("Date: " + sel.getOrderDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
+        Label dateLabel   = new Label("Date: " + (sel.getOrderDate() == null ? "N/A" : sel.getOrderDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))));
         Label statusLabel = new Label("Status: " + sel.getStatus());
         Label totalLabel  = new Label("Total: " + sel.getTotalAmount());
         totalLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");

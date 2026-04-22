@@ -1,7 +1,9 @@
 package com.example.musiclibrary.controller;
 
 import com.example.musiclibrary.MusicLibraryApp;
+import com.example.musiclibrary.dao.CustomerDao;
 import com.example.musiclibrary.dao.TrackDao;
+import com.example.musiclibrary.model.Customer;
 import com.example.musiclibrary.model.OrderItem;
 import com.example.musiclibrary.model.Track;
 import com.example.musiclibrary.service.OrderService;
@@ -37,6 +39,7 @@ public class UserMainController {
 
     private final ObservableList<Track> trackData = FXCollections.observableArrayList();
     private final ObservableList<OrderItem> cartItems = FXCollections.observableArrayList();
+    private final CustomerDao customerDao = new CustomerDao();
     private final TrackDao trackDao = new TrackDao();
     private final OrderService orderService = new OrderService();
     private SpinnerValueFactory.IntegerSpinnerValueFactory quantitySpinnerFactory;
@@ -178,7 +181,9 @@ public class UserMainController {
         checkoutBtn.setOnAction(e -> {
             try {
                 if (!SessionManager.isLoggedIn()) { showError("You must be logged in to checkout."); return; }
-                orderService.createOrder(1, SessionManager.getCurrentUser().getId(), cartItems, null);
+                int userId = SessionManager.getCurrentUser().getId();
+                int customerId = resolveCustomerIdForCurrentUser();
+                orderService.createOrder(customerId, userId, cartItems, null);
                 cartItems.clear();
                 loadAllTracks();
                 dialog.close();
@@ -254,6 +259,31 @@ public class UserMainController {
     private void loadAllTracks() {
         try { trackData.setAll(trackDao.findAllActive()); }
         catch (SQLException e) { showError("Failed to load tracks: " + e.getMessage()); }
+    }
+
+    private int resolveCustomerIdForCurrentUser() throws SQLException {
+        if (SessionManager.getCurrentUser() == null) {
+            throw new IllegalArgumentException("No logged-in user.");
+        }
+
+        String username = SessionManager.getCurrentUser().getUsername();
+        for (Customer customer : customerDao.findAll()) {
+            if (username.equalsIgnoreCase(customer.getName())) {
+                return customer.getId();
+            }
+        }
+
+        Customer customer = new Customer();
+        customer.setName(username);
+        customer.setEmail(null);
+        customer.setPhone(null);
+        customer.setCity(null);
+
+        int newId = customerDao.create(customer);
+        if (newId <= 0) {
+            throw new SQLException("Failed to create customer profile for user: " + username);
+        }
+        return newId;
     }
 
     // walk up the exception chain to find the original cause
