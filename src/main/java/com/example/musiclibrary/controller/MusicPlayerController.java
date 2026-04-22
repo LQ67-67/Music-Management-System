@@ -187,10 +187,10 @@ public class MusicPlayerController {
 
     private void updateButtonState() {
         boolean has = !playlist.isEmpty();
-        if (playButton != null)    playButton.setDisable(isPlaying || !has);
-        if (pauseButton != null)   pauseButton.setDisable(!isPlaying);
+        if (playButton != null) playButton.setDisable(isPlaying || !has);
+        if (pauseButton != null) pauseButton.setDisable(!isPlaying);
         if (previousButton != null) previousButton.setDisable(!has);
-        if (nextButton != null)    nextButton.setDisable(!has);
+        if (nextButton != null) nextButton.setDisable(!has);
     }
 
     private void updateTrackImage(String trackFile) {
@@ -198,7 +198,7 @@ public class MusicPlayerController {
             trackImageView.setImage(TrackMediaResolver.loadTrackImage(null, trackFile));
     }
 
-    // Stop playback and release resources when the window is closed
+    // stop playback and release resources when the window is closed
     public void dispose() {
         if (updateTimer != null) updateTimer.stop();
         if (mediaPlayer != null) { mediaPlayer.stop(); mediaPlayer.dispose(); mediaPlayer = null; }

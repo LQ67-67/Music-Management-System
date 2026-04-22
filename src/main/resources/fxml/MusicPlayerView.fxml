@@ -15,7 +15,7 @@
             xmlns:fx="http://javafx.com/fxml"
             stylesheets="@../css/app.css"
             prefWidth="600.0"
-            prefHeight="500.0">
+            prefHeight="600.0">
 
     <top>
         <VBox spacing="10" style="-fx-border-color: #cccccc; -fx-border-width: 0 0 1 0;">
@@ -36,9 +36,9 @@
                 <Insets top="10" right="10" bottom="10" left="10"/>
             </padding>
             <children>
-                <ImageView fx:id="trackImageView" fitWidth="180" fitHeight="180" preserveRatio="true"/>
+                <ImageView fx:id="trackImageView" fitWidth="100" fitHeight="100" preserveRatio="true"/>
                 <Label text="Playlist:" style="-fx-font-weight: bold;"/>
-                <ListView fx:id="playlistView" prefHeight="300" VBox.vgrow="ALWAYS"/>
+                <ListView fx:id="playlistView" VBox.vgrow="ALWAYS" maxHeight="Infinity"/>
 
                 <HBox spacing="10">
                     <padding>
