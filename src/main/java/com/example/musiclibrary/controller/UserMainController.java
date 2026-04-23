@@ -13,12 +13,8 @@ import com.example.musiclibrary.util.TrackMediaResolver;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
-import javafx.beans.value.ChangeListener;
-import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-import javafx.event.ActionEvent;
-import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Insets;
@@ -30,8 +26,6 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
-import javafx.stage.WindowEvent;
-import javafx.util.Callback;
 
 import java.math.BigDecimal;
 import java.sql.SQLException;
@@ -64,18 +58,11 @@ public class UserMainController {
         quantitySpinnerFactory = new SpinnerValueFactory.IntegerSpinnerValueFactory(1, 99, 1);
         quantitySpinner.setValueFactory(quantitySpinnerFactory);
 
-        // cap spinner max to the selected track's stock quantity using a clear ChangeListener
-        trackTable.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<Track>() {
-            @Override
-            public void changed(ObservableValue<? extends Track> observable, Track oldSelection, Track newSelection) {
-                if (newSelection != null) {
-                    int maxStock = Math.max(1, newSelection.getStockQty());
-                    quantitySpinnerFactory.setMax(maxStock);
-
-                    if (quantitySpinner.getValue() > maxStock) {
-                        quantitySpinnerFactory.setValue(maxStock);
-                    }
-                }
+        trackTable.getSelectionModel().selectedItemProperty().addListener((obs, oldSel, newSel) -> {
+            if (newSel != null) {
+                int maxStock = Math.max(1, newSel.getStockQty());
+                quantitySpinnerFactory.setMax(maxStock);
+                if (quantitySpinner.getValue() > maxStock) quantitySpinnerFactory.setValue(maxStock);
             }
         });
 
@@ -85,221 +72,142 @@ public class UserMainController {
     }
 
     private void setupTrackTableColumns() {
-        // cover image column
-        colCover.setCellValueFactory(new Callback<TableColumn.CellDataFeatures<Track, Track>, ObservableValue<Track>>() {
+        colCover.setCellValueFactory(d -> new SimpleObjectProperty<>(d.getValue()));
+        colCover.setCellFactory(col -> new TableCell<>() {
+            private final ImageView imageView = new ImageView();
             @Override
-            public ObservableValue<Track> call(TableColumn.CellDataFeatures<Track, Track> param) {
-                return new SimpleObjectProperty<>(param.getValue());
-            }
-        });
-
-        colCover.setCellFactory(new Callback<TableColumn<Track, Track>, TableCell<Track, Track>>() {
-            @Override
-            public TableCell<Track, Track> call(TableColumn<Track, Track> param) {
-                return new TableCell<Track, Track>() {
-                    private final ImageView imageView = new ImageView();
-
-                    @Override
-                    protected void updateItem(Track item, boolean empty) {
-                        super.updateItem(item, empty);
-                        if (empty || item == null) {
-                            setGraphic(null);
-                        } else {
-                            imageView.setFitWidth(80);
-                            imageView.setFitHeight(80);
-                            imageView.setPreserveRatio(true);
-                            imageView.setImage(TrackMediaResolver.loadTrackImage(item, item.getId() + ".mp3"));
-                            setGraphic(imageView);
-                        }
-                    }
-                };
-            }
-        });
-
-        // text columns
-        colTitle.setCellValueFactory(new Callback<TableColumn.CellDataFeatures<Track, String>, ObservableValue<String>>() {
-            @Override
-            public ObservableValue<String> call(TableColumn.CellDataFeatures<Track, String> param) {
-                return new SimpleStringProperty(param.getValue().getTitle());
-            }
-        });
-
-        colArtist.setCellValueFactory(new Callback<TableColumn.CellDataFeatures<Track, String>, ObservableValue<String>>() {
-            @Override
-            public ObservableValue<String> call(TableColumn.CellDataFeatures<Track, String> param) {
-                return new SimpleStringProperty(param.getValue().getArtist());
-            }
-        });
-
-        colGenre.setCellValueFactory(new Callback<TableColumn.CellDataFeatures<Track, String>, ObservableValue<String>>() {
-            @Override
-            public ObservableValue<String> call(TableColumn.CellDataFeatures<Track, String> param) {
-                return new SimpleStringProperty(param.getValue().getGenre());
-            }
-        });
-
-        colPrice.setCellValueFactory(new Callback<TableColumn.CellDataFeatures<Track, String>, ObservableValue<String>>() {
-            @Override
-            public ObservableValue<String> call(TableColumn.CellDataFeatures<Track, String> param) {
-                BigDecimal price = param.getValue().getPrice();
-                if (price == null) {
-                    return new SimpleStringProperty("");
+            protected void updateItem(Track item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setGraphic(null);
                 } else {
-                    return new SimpleStringProperty(price.toPlainString());
+                    imageView.setFitWidth(80); imageView.setFitHeight(80); imageView.setPreserveRatio(true);
+                    imageView.setImage(TrackMediaResolver.loadTrackImage(item, item.getId() + ".mp3"));
+                    setGraphic(imageView);
                 }
             }
         });
 
-        colStock.setCellValueFactory(new Callback<TableColumn.CellDataFeatures<Track, String>, ObservableValue<String>>() {
-            @Override
-            public ObservableValue<String> call(TableColumn.CellDataFeatures<Track, String> param) {
-                return new SimpleStringProperty(String.valueOf(param.getValue().getStockQty()));
+        colTitle.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().getTitle()));
+
+        colTitle.setComparator((s1, s2) -> {
+            if (s1 == null) return s2 == null ? 0 : -1;
+            if (s2 == null) return 1;
+
+            // split the strings into chunks of digits and non-digits
+            String[] parts1 = s1.split("(?<=\\D)(?=\\d)|(?<=\\d)(?=\\D)");
+            String[] parts2 = s2.split("(?<=\\D)(?=\\d)|(?<=\\d)(?=\\D)");
+
+            for (int i = 0; i < Math.min(parts1.length, parts2.length); i++) {
+                String p1 = parts1[i];
+                String p2 = parts2[i];
+
+                // if both chunks are numbers, compare them mathematically
+                if (p1.matches("\\d+") && p2.matches("\\d+")) {
+                    int numCompare = Long.compare(Long.parseLong(p1), Long.parseLong(p2));
+                    if (numCompare != 0) return numCompare;
+                } else {
+                    // otherwise, compare them alphabetically (ignoring case)
+                    int strCompare = p1.compareToIgnoreCase(p2);
+                    if (strCompare != 0) return strCompare;
+                }
             }
+            // if they are identical up to the length of the shorter string, the shorter one goes first
+            return Integer.compare(parts1.length, parts2.length);
         });
+
+        colArtist.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().getArtist()));
+        colGenre.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().getGenre()));
+        colPrice.setCellValueFactory(d -> {
+            BigDecimal price = d.getValue().getPrice();
+            return new SimpleStringProperty(price == null ? "" : price.toPlainString());
+        });
+        colStock.setCellValueFactory(d -> new SimpleStringProperty(String.valueOf(d.getValue().getStockQty())));
     }
 
-    // edit profile
+
     @FXML
     public void handleEditProfile() {
         try {
             User currentUser = SessionManager.getCurrentUser();
-            if (currentUser == null) {
-                showError("Please log in to edit your profile.");
-                return;
-            }
+            if (currentUser == null) { showError("Please log in to edit your profile."); return; }
 
-            // looking for existing customer details in the database
-            Customer existingCustomer = null;
-            for (Customer customerItem : customerDao.findAll()) {
-                if (currentUser.getUsername().equalsIgnoreCase(customerItem.getName())) {
-                    existingCustomer = customerItem;
-                    break;
-                }
-            }
+            Customer existingCustomer = customerDao.findAll().stream()
+                    .filter(c -> currentUser.getUsername().equalsIgnoreCase(c.getName()))
+                    .findFirst().orElse(null);
 
-            // if this is their first time editing, create a new customer record for them
             if (existingCustomer == null) {
                 existingCustomer = new Customer();
                 existingCustomer.setName(currentUser.getUsername());
-                existingCustomer.setEmail("");
-                existingCustomer.setPhone("");
-                existingCustomer.setCity("");
-
-                int newId = customerDao.create(existingCustomer);
-                existingCustomer.setId(newId);
+                existingCustomer.setEmail(""); existingCustomer.setPhone(""); existingCustomer.setCity("");
+                existingCustomer.setId(customerDao.create(existingCustomer));
             }
 
-            // create the popup window (Stage)
             Stage dialog = new Stage();
             dialog.initModality(Modality.APPLICATION_MODAL);
             dialog.setTitle("Edit My Profile");
 
-            // build the layout explicitly
             GridPane grid = new GridPane();
-            grid.setHgap(10);
-            grid.setVgap(15);
-            grid.setPadding(new Insets(20));
+            grid.setHgap(10); grid.setVgap(15); grid.setPadding(new Insets(20));
 
-            // setting up text fields with current info
             TextField nameField = new TextField(existingCustomer.getName());
             TextField emailField = new TextField(existingCustomer.getEmail());
             TextField phoneField = new TextField(existingCustomer.getPhone());
             TextField cityField = new TextField(existingCustomer.getCity());
 
-            grid.add(new Label("Username:"),0,0);
-            grid.add(nameField, 1, 0);
-            grid.add(new Label("Email:"),0,1);
-            grid.add(emailField,1, 1);
-            grid.add(new Label("Phone:"),0,2);
-            grid.add(phoneField,1,2);
-            grid.add(new Label("City:"),0,3);
-            grid.add(cityField,1,3);
+            grid.add(new Label("Username:"), 0, 0); grid.add(nameField, 1, 0);
+            grid.add(new Label("Email:"), 0, 1); grid.add(emailField, 1, 1);
+            grid.add(new Label("Phone:"), 0, 2); grid.add(phoneField, 1, 2);
+            grid.add(new Label("City:"), 0, 3); grid.add(cityField, 1, 3);
 
             Button saveButton = new Button("Save Changes");
             Button cancelButton = new Button("Cancel");
 
-            // need this 'final' reference so that we can use it inside our event handler below
             final Customer customerToUpdate = existingCustomer;
 
-            saveButton.setOnAction(new EventHandler<ActionEvent>() {
-                @Override
-                public void handle(ActionEvent event) {
-                    String inputEmail = emailField.getText();
-                    String inputPhone = phoneField.getText();
+            saveButton.setOnAction(e -> {
+                String inputEmail = emailField.getText();
+                String inputPhone = phoneField.getText();
+                String errors = "";
 
-                    String friendlyErrorMessage = "";
+                if (inputEmail != null && !inputEmail.trim().isEmpty() && !inputEmail.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$")) {
+                    errors += "• Please use a valid email format (e.g., user@example.com).\n";
+                }
 
-                    // email Validation
-                    if (inputEmail != null && !inputEmail.trim().isEmpty()) {
-                        if (!inputEmail.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$")) {
-                            friendlyErrorMessage += "• Oops! Your email looks a bit off. Please use a format like user@example.com.\n";
-                        }
-                    }
-
-                    // phone validation (Allow + - ( ) space numbers, at least 7 digits)
-                    if (inputPhone != null && !inputPhone.trim().isEmpty()) {
-                        if (!inputPhone.matches("^[0-9+\\-() ]+$")) {
-                            friendlyErrorMessage += "• Phone numbers can only contain numbers, spaces, and the characters: + - ( ) \n";
-                        } else {
-                            // Count actual numbers to make sure there are at least 7
-                            int digitCount = 0;
-                            for (int i = 0; i < inputPhone.length(); i++) {
-                                if (Character.isDigit(inputPhone.charAt(i))) {
-                                    digitCount++;
-                                }
-                            }
-                            if (digitCount < 7) {
-                                friendlyErrorMessage += "• Your phone number seems too short. It needs at least 7 digits.\n";
-                            }
-                        }
-                    }
-
-                    // if there are errors, intercept and show them nicely!
-                    if (!friendlyErrorMessage.isEmpty()) {
-                        showError("Let's fix a few things before saving:\n\n" + friendlyErrorMessage);
-                        return; // Stop the save process here
-                    }
-
-                    // validation passed and save to database
-                    try {
-                        customerToUpdate.setName(nameField.getText());
-                        customerToUpdate.setEmail(inputEmail);
-                        customerToUpdate.setPhone(inputPhone);
-                        customerToUpdate.setCity(cityField.getText());
-
-                        customerDao.update(customerToUpdate);
-
-                        showInfo("Awesome! Your profile has been successfully updated.");
-                        dialog.close();
-
-                    } catch (SQLException ex) {
-                        showError("Oh no, we couldn't save your profile to the database: " + ex.getMessage());
+                if (inputPhone != null && !inputPhone.trim().isEmpty()) {
+                    if (!inputPhone.matches("^[0-9+\\-() ]+$")) {
+                        errors += "• Phone numbers can only contain numbers, spaces, and + - ( )\n";
+                    } else if (inputPhone.replaceAll("[^0-9]", "").length() < 7) {
+                        errors += "• Your phone number needs at least 7 digits.\n";
                     }
                 }
-            });
 
-            cancelButton.setOnAction(new EventHandler<ActionEvent>() {
-                @Override
-                public void handle(ActionEvent event) {
+                if (!errors.isEmpty()) { showError("Please fix the following:\n\n" + errors); return; }
+
+                try {
+                    customerToUpdate.setName(nameField.getText());
+                    customerToUpdate.setEmail(inputEmail);
+                    customerToUpdate.setPhone(inputPhone);
+                    customerToUpdate.setCity(cityField.getText());
+                    customerDao.update(customerToUpdate);
+                    showInfo("Profile updated successfully!");
                     dialog.close();
+                } catch (SQLException ex) {
+                    showError("Failed to save profile: " + ex.getMessage());
                 }
             });
 
-            HBox buttonBox = new HBox(15);
-            buttonBox.getChildren().add(saveButton);
-            buttonBox.getChildren().add(cancelButton);
+            cancelButton.setOnAction(e -> dialog.close());
 
-            VBox mainLayout = new VBox(20);
+            HBox buttonBox = new HBox(15, saveButton, cancelButton);
+            VBox mainLayout = new VBox(20, grid, buttonBox);
             mainLayout.setPadding(new Insets(20));
-            mainLayout.getChildren().add(grid);
-            mainLayout.getChildren().add(buttonBox);
 
-            Scene scene = new Scene(mainLayout, 400, 320);
-            dialog.setScene(scene);
+            dialog.setScene(new Scene(mainLayout, 400, 320));
             dialog.showAndWait();
 
         } catch (SQLException e) {
-            showError("We had a problem loading your profile details: " + e.getMessage());
+            showError("Failed to load profile details: " + e.getMessage());
         }
     }
 
@@ -307,11 +215,7 @@ public class UserMainController {
     private void handleSearch() {
         String keyword = searchField.getText();
         try {
-            if (keyword == null || keyword.isEmpty()) {
-                trackData.setAll(trackDao.findAllActive());
-            } else {
-                trackData.setAll(trackDao.searchActiveByKeyword(keyword.trim()));
-            }
+            trackData.setAll(keyword == null || keyword.isEmpty() ? trackDao.findAllActive() : trackDao.searchActiveByKeyword(keyword.trim()));
         } catch (SQLException e) {
             showError("Failed to search tracks: " + e.getMessage());
         }
@@ -319,182 +223,87 @@ public class UserMainController {
 
     @FXML
     private void handleAddToCart() {
-        Track selectedTrack = trackTable.getSelectionModel().getSelectedItem();
+        Track sel = trackTable.getSelectionModel().getSelectedItem();
+        if (sel == null) { showError("Please select a track."); return; }
+        if (sel.getStockQty() <= 0) { showError("Track is out of stock."); return; }
 
-        if (selectedTrack == null) {
-            showError("Please select a track from the table first.");
-            return;
-        }
+        int qty = quantitySpinner.getValue();
+        if (qty > sel.getStockQty()) { showError("Not enough stock."); return; }
 
-        if (selectedTrack.getStockQty() <= 0) {
-            showError("Sorry, the selected track is completely out of stock.");
-            return;
-        }
-
-        int requestedQuantity = quantitySpinner.getValue();
-
-        if (requestedQuantity > selectedTrack.getStockQty()) {
-            showError("We don't have enough stock. Available: " + selectedTrack.getStockQty());
-            return;
-        }
-
-        // check if track is already in the cart to merge quantities
-        for (OrderItem existingItem : cartItems) {
-            if (existingItem.getTrackId() == selectedTrack.getId()) {
-                int newTotalQuantity = existingItem.getQuantity() + requestedQuantity;
-
-                if (newTotalQuantity > selectedTrack.getStockQty()) {
-                    showError("You cannot add more than the total stock. You already have " + existingItem.getQuantity() + " in your cart, and we only have " + selectedTrack.getStockQty() + " available.");
-                    return;
-                }
-
-                existingItem.setQuantity(newTotalQuantity);
-
-                BigDecimal newTotal = selectedTrack.getPrice().multiply(BigDecimal.valueOf(newTotalQuantity));
-                existingItem.setLineTotal(newTotal);
-
-                showInfo("Added " + requestedQuantity + " more to your cart. Total for this track is now: " + newTotalQuantity);
+        for (OrderItem item : cartItems) {
+            if (item.getTrackId() == sel.getId()) {
+                int newQty = item.getQuantity() + qty;
+                if (newQty > sel.getStockQty()) { showError("Total quantity exceeds stock."); return; }
+                item.setQuantity(newQty);
+                item.setLineTotal(sel.getPrice().multiply(BigDecimal.valueOf(newQty)));
+                showInfo("Added to cart. Total: " + newQty);
                 return;
             }
         }
 
-        // if it wasn't in the cart, create a new order item
         OrderItem newItem = new OrderItem();
-        newItem.setTrackId(selectedTrack.getId());
-        newItem.setQuantity(requestedQuantity);
-        newItem.setUnitPrice(selectedTrack.getPrice());
-
-        BigDecimal lineTotal = selectedTrack.getPrice().multiply(BigDecimal.valueOf(requestedQuantity));
-        newItem.setLineTotal(lineTotal);
-
+        newItem.setTrackId(sel.getId()); newItem.setQuantity(qty);
+        newItem.setUnitPrice(sel.getPrice());
+        newItem.setLineTotal(sel.getPrice().multiply(BigDecimal.valueOf(qty)));
         cartItems.add(newItem);
-        showInfo("Successfully added " + requestedQuantity + " of '" + selectedTrack.getTitle() + "' to your cart.");
+        showInfo("Added " + qty + " of '" + sel.getTitle() + "' to cart.");
     }
 
     @FXML
     private void handleViewCart() {
-        if (cartItems.isEmpty()) {
-            showInfo("Your cart is currently empty.");
-            return;
-        }
+        if (cartItems.isEmpty()) { showInfo("Cart is empty."); return; }
 
         Stage dialog = new Stage();
         dialog.initModality(Modality.APPLICATION_MODAL);
-        dialog.setTitle("Your Shopping Cart");
+        dialog.setTitle("Shopping Cart");
 
         TableView<OrderItem> cartTable = new TableView<>(cartItems);
         cartTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
         TableColumn<OrderItem, String> titleCol = new TableColumn<>("Track Title");
-        titleCol.setCellValueFactory(new Callback<TableColumn.CellDataFeatures<OrderItem, String>, ObservableValue<String>>() {
-            @Override
-            public ObservableValue<String> call(TableColumn.CellDataFeatures<OrderItem, String> param) {
-                try {
-                    Track t = trackDao.findById(param.getValue().getTrackId());
-                    if (t != null) {
-                        return new SimpleStringProperty(t.getTitle());
-                    } else {
-                        return new SimpleStringProperty("Unknown Track");
-                    }
-                } catch (SQLException e) {
-                    return new SimpleStringProperty("Error Loading Name");
-                }
-            }
+        titleCol.setCellValueFactory(d -> {
+            try {
+                Track t = trackDao.findById(d.getValue().getTrackId());
+                return new SimpleStringProperty(t != null ? t.getTitle() : "Unknown");
+            } catch (SQLException e) { return new SimpleStringProperty("Error"); }
         });
 
         TableColumn<OrderItem, Number> qtyCol = new TableColumn<>("Quantity");
-        qtyCol.setCellValueFactory(new Callback<TableColumn.CellDataFeatures<OrderItem, Number>, ObservableValue<Number>>() {
-            @Override
-            public ObservableValue<Number> call(TableColumn.CellDataFeatures<OrderItem, Number> param) {
-                return new SimpleIntegerProperty(param.getValue().getQuantity());
-            }
+        qtyCol.setCellValueFactory(d -> new SimpleIntegerProperty(d.getValue().getQuantity()));
+
+        TableColumn<OrderItem, BigDecimal> priceCol = new TableColumn<>("Price");
+        priceCol.setCellValueFactory(d -> new SimpleObjectProperty<>(d.getValue().getUnitPrice()));
+
+        TableColumn<OrderItem, BigDecimal> totalCol = new TableColumn<>("Total");
+        totalCol.setCellValueFactory(d -> new SimpleObjectProperty<>(d.getValue().getLineTotal()));
+
+        cartTable.getColumns().addAll(titleCol, qtyCol, priceCol, totalCol);
+
+        Button removeBtn = new Button("Remove Selected");
+        removeBtn.setOnAction(e -> {
+            OrderItem sel = cartTable.getSelectionModel().getSelectedItem();
+            if (sel != null) cartItems.remove(sel);
         });
 
-        TableColumn<OrderItem, BigDecimal> priceCol = new TableColumn<>("Price Per Unit");
-        priceCol.setCellValueFactory(new Callback<TableColumn.CellDataFeatures<OrderItem, BigDecimal>, ObservableValue<BigDecimal>>() {
-            @Override
-            public ObservableValue<BigDecimal> call(TableColumn.CellDataFeatures<OrderItem, BigDecimal> param) {
-                return new SimpleObjectProperty<>(param.getValue().getUnitPrice());
-            }
-        });
-
-        TableColumn<OrderItem, BigDecimal> totalCol = new TableColumn<>("Total Line Price");
-        totalCol.setCellValueFactory(new Callback<TableColumn.CellDataFeatures<OrderItem, BigDecimal>, ObservableValue<BigDecimal>>() {
-            @Override
-            public ObservableValue<BigDecimal> call(TableColumn.CellDataFeatures<OrderItem, BigDecimal> param) {
-                return new SimpleObjectProperty<>(param.getValue().getLineTotal());
-            }
-        });
-
-        cartTable.getColumns().add(titleCol);
-        cartTable.getColumns().add(qtyCol);
-        cartTable.getColumns().add(priceCol);
-        cartTable.getColumns().add(totalCol);
-
-        Button removeBtn = new Button("Remove Selected Item");
-        removeBtn.setOnAction(new EventHandler<ActionEvent>() {
-            @Override
-            public void handle(ActionEvent event) {
-                OrderItem selectedItem = cartTable.getSelectionModel().getSelectedItem();
-                if (selectedItem != null) {
-                    cartItems.remove(selectedItem);
-                }
-            }
-        });
-
-        Button clearBtn = new Button("Clear Entire Cart");
-        clearBtn.setOnAction(new EventHandler<ActionEvent>() {
-            @Override
-            public void handle(ActionEvent event) {
-                cartItems.clear();
-                dialog.close();
-            }
-        });
+        Button clearBtn = new Button("Clear Cart");
+        clearBtn.setOnAction(e -> { cartItems.clear(); dialog.close(); });
 
         Button checkoutBtn = new Button("Checkout");
-        checkoutBtn.setOnAction(new EventHandler<ActionEvent>() {
-            @Override
-            public void handle(ActionEvent event) {
-                try {
-                    if (!SessionManager.isLoggedIn()) {
-                        showError("You must be logged in to checkout.");
-                        return;
-                    }
-
-                    int userId = SessionManager.getCurrentUser().getId();
-                    int customerId = resolveCustomerIdForCurrentUser();
-
-                    orderService.createOrder(customerId, userId, cartItems, null);
-
-                    cartItems.clear();
-                    loadAllTracks(); // Refresh main table to show updated stock
-                    dialog.close();
-                    showInfo("Success! Your order has been placed.");
-
-                } catch (SQLException | IllegalArgumentException ex) {
-                    showError("We encountered a problem creating your order: " + ex.getMessage());
-                }
-            }
+        checkoutBtn.setOnAction(e -> {
+            try {
+                if (!SessionManager.isLoggedIn()) { showError("Must be logged in to checkout."); return; }
+                orderService.createOrder(resolveCustomerIdForCurrentUser(), SessionManager.getCurrentUser().getId(), cartItems, null);
+                cartItems.clear(); loadAllTracks(); dialog.close();
+                showInfo("Order placed successfully!");
+            } catch (SQLException | IllegalArgumentException ex) { showError("Checkout failed: " + ex.getMessage()); }
         });
 
-        Button closeBtn = new Button("Close Cart Window");
-        closeBtn.setOnAction(new EventHandler<ActionEvent>() {
-            @Override
-            public void handle(ActionEvent event) {
-                dialog.close();
-            }
-        });
+        Button closeBtn = new Button("Close");
+        closeBtn.setOnAction(e -> dialog.close());
 
-        HBox buttonBox = new HBox(10);
-        buttonBox.getChildren().addAll(removeBtn, clearBtn, checkoutBtn, closeBtn);
-
-        VBox layoutBox = new VBox(15);
+        VBox layoutBox = new VBox(15, cartTable, new HBox(10, removeBtn, clearBtn, checkoutBtn, closeBtn));
         layoutBox.setPadding(new Insets(15));
-        layoutBox.getChildren().add(cartTable);
-        layoutBox.getChildren().add(buttonBox);
-
-        Scene scene = new Scene(layoutBox, 550, 400);
-        dialog.setScene(scene);
+        dialog.setScene(new Scene(layoutBox, 550, 400));
         dialog.showAndWait();
     }
 
@@ -503,20 +312,11 @@ public class UserMainController {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/OrderManagementView.fxml"));
             Stage stage = new Stage();
-            stage.setTitle("My Order History");
-            stage.initModality(Modality.WINDOW_MODAL);
-            stage.initOwner(trackTable.getScene().getWindow());
-
-            Scene scene = new Scene(loader.load(), 920, 640);
-            stage.setScene(scene);
-            stage.setMinWidth(820);
-            stage.setMinHeight(560);
+            stage.setTitle("My Order History"); stage.initModality(Modality.WINDOW_MODAL); stage.initOwner(trackTable.getScene().getWindow());
+            stage.setScene(new Scene(loader.load(), 920, 640));
+            stage.setMinWidth(820); stage.setMinHeight(560);
             stage.showAndWait();
-
-        } catch (Exception e) {
-            Throwable root = getRootCause(e);
-            showError("Failed to open your orders (" + root.getClass().getSimpleName() + "): " + root.getMessage());
-        }
+        } catch (Exception e) { showError("Failed to open orders: " + e.getMessage()); }
     }
 
     @FXML
@@ -524,27 +324,13 @@ public class UserMainController {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/MusicPlayerView.fxml"));
             Stage stage = new Stage();
-            stage.setTitle("Music Player");
-            stage.initModality(Modality.WINDOW_MODAL);
-            stage.initOwner(trackTable.getScene().getWindow());
-
-            Scene scene = new Scene(loader.load(), 600, 500);
-            stage.setScene(scene);
-            stage.setMinWidth(500);
-            stage.setMinHeight(400);
-
+            stage.setTitle("Music Player"); stage.initModality(Modality.WINDOW_MODAL); stage.initOwner(trackTable.getScene().getWindow());
+            stage.setScene(new Scene(loader.load(), 600, 500));
+            stage.setMinWidth(500); stage.setMinHeight(400);
             MusicPlayerController controller = loader.getController();
-            stage.setOnCloseRequest(new EventHandler<WindowEvent>() {
-                @Override
-                public void handle(WindowEvent event) {
-                    controller.dispose();
-                }
-            });
+            stage.setOnCloseRequest(e -> controller.dispose());
             stage.showAndWait();
-        } catch (Exception e) {
-            Throwable root = getRootCause(e);
-            showError("Failed to open the music player (" + root.getClass().getSimpleName() + "): " + root.getMessage());
-        }
+        } catch (Exception e) { showError("Failed to open player: " + e.getMessage()); }
     }
 
     @FXML
@@ -553,70 +339,27 @@ public class UserMainController {
         Stage stage = (Stage) trackTable.getScene().getWindow();
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/LoginView.fxml"));
-            Scene loginScene = new Scene(loader.load(), MusicLibraryApp.LOGIN_SCENE_WIDTH, MusicLibraryApp.LOGIN_SCENE_HEIGHT);
-
-            stage.setScene(loginScene);
-            stage.setMinWidth(MusicLibraryApp.LOGIN_MIN_WIDTH);
-            stage.setMinHeight(MusicLibraryApp.LOGIN_MIN_HEIGHT);
-            stage.setWidth(MusicLibraryApp.LOGIN_SCENE_WIDTH);
-            stage.setHeight(MusicLibraryApp.LOGIN_SCENE_HEIGHT);
+            stage.setScene(new Scene(loader.load(), MusicLibraryApp.LOGIN_SCENE_WIDTH, MusicLibraryApp.LOGIN_SCENE_HEIGHT));
+            stage.setMinWidth(MusicLibraryApp.LOGIN_MIN_WIDTH); stage.setMinHeight(MusicLibraryApp.LOGIN_MIN_HEIGHT);
+            stage.setWidth(MusicLibraryApp.LOGIN_SCENE_WIDTH); stage.setHeight(MusicLibraryApp.LOGIN_SCENE_HEIGHT);
             stage.centerOnScreen();
-        } catch (Exception e) {
-            showError("Failed to return to the login screen: " + e.getMessage());
-        }
+        } catch (Exception e) { showError("Logout failed: " + e.getMessage()); }
     }
 
     private void loadAllTracks() {
-        try {
-            trackData.setAll(trackDao.findAllActive());
-        } catch (SQLException e) {
-            showError("We could not load the music tracks: " + e.getMessage());
-        }
+        try { trackData.setAll(trackDao.findAllActive()); } catch (SQLException e) { showError("Load failed: " + e.getMessage()); }
     }
 
     private int resolveCustomerIdForCurrentUser() throws SQLException {
-        if (SessionManager.getCurrentUser() == null) {
-            throw new IllegalArgumentException("There is no logged-in user.");
-        }
-
-        String currentUsername = SessionManager.getCurrentUser().getUsername();
-
-        for (Customer customer : customerDao.findAll()) {
-            if (currentUsername.equalsIgnoreCase(customer.getName())) {
-                return customer.getId();
-            }
-        }
-
-        Customer newCustomer = new Customer();
-        newCustomer.setName(currentUsername);
-        newCustomer.setEmail(null);
-        newCustomer.setPhone(null);
-        newCustomer.setCity(null);
-
-        int generatedId = customerDao.create(newCustomer);
-        if (generatedId <= 0) {
-            throw new SQLException("Failed to create a customer profile for user: " + currentUsername);
-        }
-        return generatedId;
+        if (SessionManager.getCurrentUser() == null) throw new IllegalArgumentException("No logged-in user.");
+        String uname = SessionManager.getCurrentUser().getUsername();
+        for (Customer c : customerDao.findAll()) if (uname.equalsIgnoreCase(c.getName())) return c.getId();
+        Customer nc = new Customer(); nc.setName(uname);
+        int id = customerDao.create(nc);
+        if (id <= 0) throw new SQLException("Failed to create customer.");
+        return id;
     }
 
-    private Throwable getRootCause(Throwable throwable) {
-        Throwable cause = throwable;
-        while (cause.getCause() != null && cause.getCause() != cause) {
-            cause = cause.getCause();
-        }
-        return cause;
-    }
-
-    private void showError(String message) {
-        Alert alert = new Alert(Alert.AlertType.ERROR, message);
-        alert.setHeaderText("Something went wrong");
-        alert.showAndWait();
-    }
-
-    private void showInfo(String message) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION, message);
-        alert.setHeaderText("Update Successful");
-        alert.showAndWait();
-    }
+    private void showError(String msg) { new Alert(Alert.AlertType.ERROR, msg).showAndWait(); }
+    private void showInfo(String msg) { new Alert(Alert.AlertType.INFORMATION, msg).showAndWait(); }
 }

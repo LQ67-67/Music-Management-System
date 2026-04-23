@@ -10,11 +10,8 @@ import com.example.musiclibrary.session.SessionManager;
 import com.example.musiclibrary.util.TrackMediaResolver;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
-import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-import javafx.event.ActionEvent;
-import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Insets;
@@ -25,7 +22,6 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
-import javafx.util.Callback;
 
 import java.math.BigDecimal;
 import java.sql.Connection;
@@ -73,84 +69,46 @@ public class AdminMainController {
         // image column
         TableColumn<Track, Track> imageCol = new TableColumn<>("Image");
         imageCol.setPrefWidth(110);
-        imageCol.setCellValueFactory(new Callback<TableColumn.CellDataFeatures<Track, Track>, ObservableValue<Track>>() {
+        imageCol.setCellValueFactory(param -> new SimpleObjectProperty<>(param.getValue()));
+        imageCol.setCellFactory(param -> new TableCell<Track, Track>() {
+            private final ImageView imageView = new ImageView();
             @Override
-            public ObservableValue<Track> call(TableColumn.CellDataFeatures<Track, Track> param) {
-                return new SimpleObjectProperty<>(param.getValue());
-            }
-        });
-        imageCol.setCellFactory(new Callback<TableColumn<Track, Track>, TableCell<Track, Track>>() {
-            @Override
-            public TableCell<Track, Track> call(TableColumn<Track, Track> param) {
-                return new TableCell<Track, Track>() {
-                    private final ImageView imageView = new ImageView();
-                    @Override
-                    protected void updateItem(Track item, boolean empty) {
-                        super.updateItem(item, empty);
-                        if (empty || item == null) {
-                            setGraphic(null);
-                        } else {
-                            imageView.setFitWidth(80);
-                            imageView.setFitHeight(80);
-                            imageView.setPreserveRatio(true);
-                            imageView.setImage(TrackMediaResolver.loadTrackImage(item, item.getId() + ".mp3"));
-                            setGraphic(imageView);
-                        }
-                    }
-                };
+            protected void updateItem(Track item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setGraphic(null);
+                } else {
+                    imageView.setFitWidth(80);
+                    imageView.setFitHeight(80);
+                    imageView.setPreserveRatio(true);
+                    imageView.setImage(TrackMediaResolver.loadTrackImage(item, item.getId() + ".mp3"));
+                    setGraphic(imageView);
+                }
             }
         });
 
         // text columns
         TableColumn<Track, String> titleCol = new TableColumn<>("Title");
-        titleCol.setCellValueFactory(new Callback<TableColumn.CellDataFeatures<Track, String>, ObservableValue<String>>() {
-            @Override
-            public ObservableValue<String> call(TableColumn.CellDataFeatures<Track, String> param) {
-                return new SimpleStringProperty(param.getValue().getTitle());
-            }
-        });
+        titleCol.setCellValueFactory(param -> new SimpleStringProperty(param.getValue().getTitle()));
 
         TableColumn<Track, String> artistCol = new TableColumn<>("Artist");
-        artistCol.setCellValueFactory(new Callback<TableColumn.CellDataFeatures<Track, String>, ObservableValue<String>>() {
-            @Override
-            public ObservableValue<String> call(TableColumn.CellDataFeatures<Track, String> param) {
-                return new SimpleStringProperty(param.getValue().getArtist());
-            }
-        });
+        artistCol.setCellValueFactory(param -> new SimpleStringProperty(param.getValue().getArtist()));
 
         TableColumn<Track, String> albumCol = new TableColumn<>("Album");
-        albumCol.setCellValueFactory(new Callback<TableColumn.CellDataFeatures<Track, String>, ObservableValue<String>>() {
-            @Override
-            public ObservableValue<String> call(TableColumn.CellDataFeatures<Track, String> param) {
-                return new SimpleStringProperty(param.getValue().getAlbum());
-            }
-        });
+        albumCol.setCellValueFactory(param -> new SimpleStringProperty(param.getValue().getAlbum()));
 
         TableColumn<Track, String> genreCol = new TableColumn<>("Genre");
-        genreCol.setCellValueFactory(new Callback<TableColumn.CellDataFeatures<Track, String>, ObservableValue<String>>() {
-            @Override
-            public ObservableValue<String> call(TableColumn.CellDataFeatures<Track, String> param) {
-                return new SimpleStringProperty(param.getValue().getGenre());
-            }
-        });
+        genreCol.setCellValueFactory(param -> new SimpleStringProperty(param.getValue().getGenre()));
 
         TableColumn<Track, String> priceCol = new TableColumn<>("Price");
-        priceCol.setCellValueFactory(new Callback<TableColumn.CellDataFeatures<Track, String>, ObservableValue<String>>() {
-            @Override
-            public ObservableValue<String> call(TableColumn.CellDataFeatures<Track, String> param) {
-                BigDecimal price = param.getValue().getPrice();
-                if (price == null) return new SimpleStringProperty("");
-                return new SimpleStringProperty(price.toPlainString());
-            }
+        priceCol.setCellValueFactory(param -> {
+            BigDecimal price = param.getValue().getPrice();
+            if (price == null) return new SimpleStringProperty("");
+            return new SimpleStringProperty(price.toPlainString());
         });
 
         TableColumn<Track, String> stockCol = new TableColumn<>("Stock");
-        stockCol.setCellValueFactory(new Callback<TableColumn.CellDataFeatures<Track, String>, ObservableValue<String>>() {
-            @Override
-            public ObservableValue<String> call(TableColumn.CellDataFeatures<Track, String> param) {
-                return new SimpleStringProperty(String.valueOf(param.getValue().getStockQty()));
-            }
-        });
+        stockCol.setCellValueFactory(param -> new SimpleStringProperty(String.valueOf(param.getValue().getStockQty())));
 
         trackTable.getColumns().add(imageCol);
         trackTable.getColumns().add(titleCol);
@@ -162,36 +120,25 @@ public class AdminMainController {
 
         // buttons
         Button addBtn = new Button("Add Track");
-        addBtn.setOnAction(new EventHandler<ActionEvent>() {
-            @Override
-            public void handle(ActionEvent event) {
-                showTrackDialog(null);
-            }
-        });
+        addBtn.setOnAction(event -> showTrackDialog(null));
 
         Button editBtn = new Button("Edit Track");
-        editBtn.setOnAction(new EventHandler<ActionEvent>() {
-            @Override
-            public void handle(ActionEvent event) {
-                Track selectedTrack = trackTable.getSelectionModel().getSelectedItem();
-                if (selectedTrack != null) {
-                    showTrackDialog(selectedTrack);
-                } else {
-                    showError("Please select a track from the table to edit.");
-                }
+        editBtn.setOnAction(event -> {
+            Track selectedTrack = trackTable.getSelectionModel().getSelectedItem();
+            if (selectedTrack != null) {
+                showTrackDialog(selectedTrack);
+            } else {
+                showError("Please select a track from the table to edit.");
             }
         });
 
         Button deleteBtn = new Button("Delete Track");
-        deleteBtn.setOnAction(new EventHandler<ActionEvent>() {
-            @Override
-            public void handle(ActionEvent event) {
-                Track selectedTrack = trackTable.getSelectionModel().getSelectedItem();
-                if (selectedTrack != null) {
-                    deleteTrack(selectedTrack);
-                } else {
-                    showError("Please select a track from the table to delete.");
-                }
+        deleteBtn.setOnAction(event -> {
+            Track selectedTrack = trackTable.getSelectionModel().getSelectedItem();
+            if (selectedTrack != null) {
+                deleteTrack(selectedTrack);
+            } else {
+                showError("Please select a track from the table to delete.");
             }
         });
 
@@ -239,57 +186,49 @@ public class AdminMainController {
         grid.setVgap(10);
         grid.setPadding(new Insets(20));
 
-        grid.add(new Label("Title:"), 0, 0); grid.add(titleField, 1, 0);
-        grid.add(new Label("Artist:"), 0, 1); grid.add(artistField, 1, 1);
-        grid.add(new Label("Album:"), 0, 2); grid.add(albumField, 1, 2);
-        grid.add(new Label("Genre:"), 0, 3); grid.add(genreField, 1, 3);
-        grid.add(new Label("Price:"), 0, 4); grid.add(priceField, 1, 4);
-        grid.add(new Label("Stock:"), 0, 5); grid.add(stockField, 1, 5);
+        grid.add(new Label("Title:"),0,0); grid.add(titleField,1,0);
+        grid.add(new Label("Artist:"),0,1); grid.add(artistField,1,1);
+        grid.add(new Label("Album:"),0,2); grid.add(albumField,1,2);
+        grid.add(new Label("Genre:"),0,3); grid.add(genreField,1,3);
+        grid.add(new Label("Price:"),0,4); grid.add(priceField,1,4);
+        grid.add(new Label("Stock:"),0,5); grid.add(stockField,1,5);
 
         Button saveBtn = new Button("Save");
-        saveBtn.setOnAction(new EventHandler<ActionEvent>() {
-            @Override
-            public void handle(ActionEvent event) {
-                try {
-                    BigDecimal price = new BigDecimal(priceField.getText());
-                    int stock = Integer.parseInt(stockField.getText());
+        saveBtn.setOnAction(event -> {
+            try {
+                BigDecimal price = new BigDecimal(priceField.getText());
+                int stock = Integer.parseInt(stockField.getText());
 
-                    if (price.compareTo(BigDecimal.ZERO) <= 0) throw new IllegalArgumentException("Price must be greater than 0.");
-                    if (stock <= 0) throw new IllegalArgumentException("Stock must be greater than 0.");
+                if (price.compareTo(BigDecimal.ZERO) <= 0) throw new IllegalArgumentException("Price must be greater than 0.");
+                if (stock <= 0) throw new IllegalArgumentException("Stock must be greater than 0.");
 
-                    Track newOrUpdatedTrack = new Track();
-                    if (track != null) {
-                        newOrUpdatedTrack.setId(track.getId());
-                    }
-
-                    newOrUpdatedTrack.setTitle(titleField.getText());
-                    newOrUpdatedTrack.setArtist(artistField.getText());
-                    newOrUpdatedTrack.setAlbum(albumField.getText());
-                    newOrUpdatedTrack.setGenre(genreField.getText());
-                    newOrUpdatedTrack.setPrice(price);
-                    newOrUpdatedTrack.setStockQty(stock);
-
-                    if (track == null) {
-                        trackDao.create(newOrUpdatedTrack);
-                    } else {
-                        trackDao.update(newOrUpdatedTrack);
-                    }
-
-                    loadTracks();
-                    dialog.close();
-                } catch (Exception ex) {
-                    showError("Invalid input: " + ex.getMessage());
+                Track newOrUpdatedTrack = new Track();
+                if (track != null) {
+                    newOrUpdatedTrack.setId(track.getId());
                 }
+
+                newOrUpdatedTrack.setTitle(titleField.getText());
+                newOrUpdatedTrack.setArtist(artistField.getText());
+                newOrUpdatedTrack.setAlbum(albumField.getText());
+                newOrUpdatedTrack.setGenre(genreField.getText());
+                newOrUpdatedTrack.setPrice(price);
+                newOrUpdatedTrack.setStockQty(stock);
+
+                if (track == null) {
+                    trackDao.create(newOrUpdatedTrack);
+                } else {
+                    trackDao.update(newOrUpdatedTrack);
+                }
+
+                loadTracks();
+                dialog.close();
+            } catch (Exception ex) {
+                showError("Invalid input: " + ex.getMessage());
             }
         });
 
         Button cancelBtn = new Button("Cancel");
-        cancelBtn.setOnAction(new EventHandler<ActionEvent>() {
-            @Override
-            public void handle(ActionEvent event) {
-                dialog.close();
-            }
-        });
+        cancelBtn.setOnAction(event -> dialog.close());
 
         HBox buttonLayout = new HBox(10);
         buttonLayout.setAlignment(Pos.CENTER);
@@ -317,36 +256,16 @@ public class AdminMainController {
         customerTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
 
         TableColumn<Customer, String> nameCol = new TableColumn<>("Name");
-        nameCol.setCellValueFactory(new Callback<TableColumn.CellDataFeatures<Customer, String>, ObservableValue<String>>() {
-            @Override
-            public ObservableValue<String> call(TableColumn.CellDataFeatures<Customer, String> param) {
-                return new SimpleStringProperty(param.getValue().getName());
-            }
-        });
+        nameCol.setCellValueFactory(param -> new SimpleStringProperty(param.getValue().getName()));
 
         TableColumn<Customer, String> emailCol = new TableColumn<>("Email");
-        emailCol.setCellValueFactory(new Callback<TableColumn.CellDataFeatures<Customer, String>, ObservableValue<String>>() {
-            @Override
-            public ObservableValue<String> call(TableColumn.CellDataFeatures<Customer, String> param) {
-                return new SimpleStringProperty(param.getValue().getEmail());
-            }
-        });
+        emailCol.setCellValueFactory(param -> new SimpleStringProperty(param.getValue().getEmail()));
 
         TableColumn<Customer, String> phoneCol = new TableColumn<>("Phone");
-        phoneCol.setCellValueFactory(new Callback<TableColumn.CellDataFeatures<Customer, String>, ObservableValue<String>>() {
-            @Override
-            public ObservableValue<String> call(TableColumn.CellDataFeatures<Customer, String> param) {
-                return new SimpleStringProperty(param.getValue().getPhone());
-            }
-        });
+        phoneCol.setCellValueFactory(param -> new SimpleStringProperty(param.getValue().getPhone()));
 
         TableColumn<Customer, String> cityCol = new TableColumn<>("City");
-        cityCol.setCellValueFactory(new Callback<TableColumn.CellDataFeatures<Customer, String>, ObservableValue<String>>() {
-            @Override
-            public ObservableValue<String> call(TableColumn.CellDataFeatures<Customer, String> param) {
-                return new SimpleStringProperty(param.getValue().getCity());
-            }
-        });
+        cityCol.setCellValueFactory(param -> new SimpleStringProperty(param.getValue().getCity()));
 
         customerTable.getColumns().add(nameCol);
         customerTable.getColumns().add(emailCol);
@@ -354,36 +273,25 @@ public class AdminMainController {
         customerTable.getColumns().add(cityCol);
 
         Button addBtn = new Button("Add Customer");
-        addBtn.setOnAction(new EventHandler<ActionEvent>() {
-            @Override
-            public void handle(ActionEvent event) {
-                showCustomerDialog(null);
-            }
-        });
+        addBtn.setOnAction(event -> showCustomerDialog(null));
 
         Button editBtn = new Button("Edit Customer");
-        editBtn.setOnAction(new EventHandler<ActionEvent>() {
-            @Override
-            public void handle(ActionEvent event) {
-                Customer selectedCustomer = customerTable.getSelectionModel().getSelectedItem();
-                if (selectedCustomer != null) {
-                    showCustomerDialog(selectedCustomer);
-                } else {
-                    showError("Please select a customer to edit.");
-                }
+        editBtn.setOnAction(event -> {
+            Customer selectedCustomer = customerTable.getSelectionModel().getSelectedItem();
+            if (selectedCustomer != null) {
+                showCustomerDialog(selectedCustomer);
+            } else {
+                showError("Please select a customer to edit.");
             }
         });
 
         Button deleteBtn = new Button("Delete Customer");
-        deleteBtn.setOnAction(new EventHandler<ActionEvent>() {
-            @Override
-            public void handle(ActionEvent event) {
-                Customer selectedCustomer = customerTable.getSelectionModel().getSelectedItem();
-                if (selectedCustomer != null) {
-                    deleteCustomer(selectedCustomer);
-                } else {
-                    showError("Please select a customer to delete.");
-                }
+        deleteBtn.setOnAction(event -> {
+            Customer selectedCustomer = customerTable.getSelectionModel().getSelectedItem();
+            if (selectedCustomer != null) {
+                deleteCustomer(selectedCustomer);
+            } else {
+                showError("Please select a customer to delete.");
             }
         });
 
@@ -425,47 +333,39 @@ public class AdminMainController {
         GridPane grid = new GridPane();
         grid.setHgap(10); grid.setVgap(10); grid.setPadding(new Insets(20));
 
-        grid.add(new Label("Name:"), 0, 0); grid.add(nameField, 1, 0);
-        grid.add(new Label("Email:"), 0, 1); grid.add(emailField, 1, 1);
-        grid.add(new Label("Phone:"), 0, 2); grid.add(phoneField, 1, 2);
-        grid.add(new Label("City:"), 0, 3); grid.add(cityField, 1, 3);
+        grid.add(new Label("Name:"),0,0); grid.add(nameField,1,0);
+        grid.add(new Label("Email:"),0,1); grid.add(emailField,1,1);
+        grid.add(new Label("Phone:"),0,2); grid.add(phoneField,1,2);
+        grid.add(new Label("City:"),0,3); grid.add(cityField,1,3);
 
         Button saveBtn = new Button("Save");
-        saveBtn.setOnAction(new EventHandler<ActionEvent>() {
-            @Override
-            public void handle(ActionEvent event) {
-                try {
-                    Customer newOrUpdatedCustomer = new Customer();
-                    if (customer != null) {
-                        newOrUpdatedCustomer.setId(customer.getId());
-                    }
-
-                    newOrUpdatedCustomer.setName(nameField.getText());
-                    newOrUpdatedCustomer.setEmail(emailField.getText());
-                    newOrUpdatedCustomer.setPhone(phoneField.getText());
-                    newOrUpdatedCustomer.setCity(cityField.getText());
-
-                    if (customer == null) {
-                        customerDao.create(newOrUpdatedCustomer);
-                    } else {
-                        customerDao.update(newOrUpdatedCustomer);
-                    }
-
-                    loadCustomers();
-                    dialog.close();
-                } catch (Exception ex) {
-                    showError("Invalid input: " + ex.getMessage());
+        saveBtn.setOnAction(event -> {
+            try {
+                Customer newOrUpdatedCustomer = new Customer();
+                if (customer != null) {
+                    newOrUpdatedCustomer.setId(customer.getId());
                 }
+
+                newOrUpdatedCustomer.setName(nameField.getText());
+                newOrUpdatedCustomer.setEmail(emailField.getText());
+                newOrUpdatedCustomer.setPhone(phoneField.getText());
+                newOrUpdatedCustomer.setCity(cityField.getText());
+
+                if (customer == null) {
+                    customerDao.create(newOrUpdatedCustomer);
+                } else {
+                    customerDao.update(newOrUpdatedCustomer);
+                }
+
+                loadCustomers();
+                dialog.close();
+            } catch (Exception ex) {
+                showError("Invalid input: " + ex.getMessage());
             }
         });
 
         Button cancelBtn = new Button("Cancel");
-        cancelBtn.setOnAction(new EventHandler<ActionEvent>() {
-            @Override
-            public void handle(ActionEvent event) {
-                dialog.close();
-            }
-        });
+        cancelBtn.setOnAction(event -> dialog.close());
 
         HBox buttonLayout = new HBox(10);
         buttonLayout.setAlignment(Pos.CENTER);
@@ -495,29 +395,21 @@ public class AdminMainController {
         String[] headers = {"Order ID", "Username", "Customer Name", "Order Date", "Status", "Total", "Shipping City"};
 
         for (int i = 0; i < headers.length; i++) {
-            final int index = i;     // needs to be final to use inside the inner class
+            final int index = i;     // needs to be final to use inside the inner class/lambda
             TableColumn<String[], String> column = new TableColumn<>(headers[i]);
 
-            column.setCellValueFactory(new Callback<TableColumn.CellDataFeatures<String[], String>, ObservableValue<String>>() {
-                @Override
-                public ObservableValue<String> call(TableColumn.CellDataFeatures<String[], String> param) {
-                    return new SimpleStringProperty(param.getValue()[index]);
-                }
-            });
+            column.setCellValueFactory(param -> new SimpleStringProperty(param.getValue()[index]));
 
             orderTable.getColumns().add(column);
         }
 
         Button editBtn = new Button("Edit Order");
-        editBtn.setOnAction(new EventHandler<ActionEvent>() {
-            @Override
-            public void handle(ActionEvent event) {
-                String[] selectedRow = orderTable.getSelectionModel().getSelectedItem();
-                if (selectedRow != null) {
-                    showOrderEditDialog(selectedRow);
-                } else {
-                    showError("Please select an order to edit.");
-                }
+        editBtn.setOnAction(event -> {
+            String[] selectedRow = orderTable.getSelectionModel().getSelectedItem();
+            if (selectedRow != null) {
+                showOrderEditDialog(selectedRow);
+            } else {
+                showError("Please select an order to edit.");
             }
         });
 
@@ -550,33 +442,25 @@ public class AdminMainController {
         grid.add(new Label("Shipping City:"), 0, 1); grid.add(cityField, 1, 1);
 
         Button saveBtn = new Button("Save");
-        saveBtn.setOnAction(new EventHandler<ActionEvent>() {
-            @Override
-            public void handle(ActionEvent event) {
-                String sql = "UPDATE orders SET status = ?, shipping_city = ? WHERE id = ?";
-                try (Connection conn = DBConnectionManager.getConnection();
-                     PreparedStatement ps = conn.prepareStatement(sql)) {
+        saveBtn.setOnAction(event -> {
+            String sql = "UPDATE orders SET status = ?, shipping_city = ? WHERE id = ?";
+            try (Connection conn = DBConnectionManager.getConnection();
+                 PreparedStatement ps = conn.prepareStatement(sql)) {
 
-                    ps.setString(1, statusBox.getValue());
-                    ps.setString(2, cityField.getText());
-                    ps.setInt(3, Integer.parseInt(row[0]));
-                    ps.executeUpdate();
+                ps.setString(1, statusBox.getValue());
+                ps.setString(2, cityField.getText());
+                ps.setInt(3, Integer.parseInt(row[0]));
+                ps.executeUpdate();
 
-                    loadOrders();
-                    dialog.close();
-                } catch (SQLException ex) {
-                    showError("Failed to update order: " + ex.getMessage());
-                }
+                loadOrders();
+                dialog.close();
+            } catch (SQLException ex) {
+                showError("Failed to update order: " + ex.getMessage());
             }
         });
 
         Button cancelBtn = new Button("Cancel");
-        cancelBtn.setOnAction(new EventHandler<ActionEvent>() {
-            @Override
-            public void handle(ActionEvent event) {
-                dialog.close();
-            }
-        });
+        cancelBtn.setOnAction(event -> dialog.close());
 
         HBox buttonLayout = new HBox(10);
         buttonLayout.setAlignment(Pos.CENTER);
@@ -641,19 +525,9 @@ public class AdminMainController {
         });
 
         Button refreshBtn = new Button("Refresh Reports");
-        refreshBtn.setOnAction(new EventHandler<ActionEvent>() {
-            @Override
-            public void handle(ActionEvent event) {
-                refreshReport(reportType.getValue());
-            }
-        });
+        refreshBtn.setOnAction(event -> refreshReport(reportType.getValue()));
 
-        reportType.setOnAction(new EventHandler<ActionEvent>() {
-            @Override
-            public void handle(ActionEvent event) {
-                refreshReport(reportType.getValue());
-            }
-        });
+        reportType.setOnAction(event -> refreshReport(reportType.getValue()));
 
         VBox box = new VBox(10);
         box.setPadding(new Insets(12));
@@ -745,12 +619,7 @@ public class AdminMainController {
             reportTable.getColumns().clear();
             TableColumn<String, String> resultCol = new TableColumn<>("Result");
 
-            resultCol.setCellValueFactory(new Callback<TableColumn.CellDataFeatures<String, String>, ObservableValue<String>>() {
-                @Override
-                public ObservableValue<String> call(TableColumn.CellDataFeatures<String, String> param) {
-                    return new SimpleStringProperty(param.getValue());
-                }
-            });
+            resultCol.setCellValueFactory(param -> new SimpleStringProperty(param.getValue()));
 
             reportTable.getColumns().add(resultCol);
             reportTable.setItems(rows);

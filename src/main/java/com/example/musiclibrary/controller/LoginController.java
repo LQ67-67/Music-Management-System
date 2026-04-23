@@ -4,8 +4,6 @@ import com.example.musiclibrary.dao.UserDao;
 import com.example.musiclibrary.model.User;
 import com.example.musiclibrary.session.SessionManager;
 
-import javafx.event.ActionEvent;
-import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Insets;
@@ -18,7 +16,6 @@ import javafx.stage.Stage;
 
 import java.net.URL;
 import java.sql.SQLException;
-import java.util.function.UnaryOperator;
 
 public class LoginController {
     private static final int USERNAME_MAX_LEN = 20;
@@ -36,26 +33,14 @@ public class LoginController {
         userDao = new UserDao();
 
         // limit 20 characters can be typed in the username field
-        usernameField.setTextFormatter(new TextFormatter<>(new UnaryOperator<TextFormatter.Change>() {
-            @Override
-            public TextFormatter.Change apply(TextFormatter.Change change) {
-                if (change.getControlNewText().length() <= USERNAME_MAX_LEN) {
-                    return change;
-                }
-                return null;
-            }
-        }));
+        usernameField.setTextFormatter(new TextFormatter<>(change ->
+                change.getControlNewText().length() <= USERNAME_MAX_LEN ? change : null
+        ));
 
         // limit 30 characters can be typed in the password field
-        passwordField.setTextFormatter(new TextFormatter<>(new UnaryOperator<TextFormatter.Change>() {
-            @Override
-            public TextFormatter.Change apply(TextFormatter.Change change) {
-                if (change.getControlNewText().length() <= PASSWORD_MAX_LEN) {
-                    return change;
-                }
-                return null;
-            }
-        }));
+        passwordField.setTextFormatter(new TextFormatter<>(change ->
+                change.getControlNewText().length() <= PASSWORD_MAX_LEN ? change : null
+        ));
     }
 
     @FXML
@@ -126,53 +111,45 @@ public class LoginController {
         grid.add(new Label("Confirm Password:"),0,2); grid.add(confirmField,1,2);
 
         Button registerBtn = new Button("Register");
-        registerBtn.setOnAction(new EventHandler<ActionEvent>() {
-            @Override
-            public void handle(ActionEvent event) {
-                String u = newUsernameField.getText();
-                String p = newPasswordField.getText();
+        registerBtn.setOnAction(event -> {
+            String u = newUsernameField.getText();
+            String p = newPasswordField.getText();
 
-                if (u.isEmpty() || p.isEmpty()) {
-                    Alert alert = new Alert(Alert.AlertType.ERROR, "Username and password cannot be empty.");
-                    alert.initOwner(dialog);
-                    alert.setHeaderText(null);
-                    alert.showAndWait();
-                    return;
-                }
+            if (u.isEmpty() || p.isEmpty()) {
+                Alert alert = new Alert(Alert.AlertType.ERROR, "Username and password cannot be empty.");
+                alert.initOwner(dialog);
+                alert.setHeaderText(null);
+                alert.showAndWait();
+                return;
+            }
 
-                if (!p.equals(confirmField.getText())) {
-                    Alert alert = new Alert(Alert.AlertType.ERROR, "Passwords do not match.");
-                    alert.initOwner(dialog);
-                    alert.setHeaderText(null);
-                    alert.showAndWait();
-                    return;
-                }
+            if (!p.equals(confirmField.getText())) {
+                Alert alert = new Alert(Alert.AlertType.ERROR, "Passwords do not match.");
+                alert.initOwner(dialog);
+                alert.setHeaderText(null);
+                alert.showAndWait();
+                return;
+            }
 
-                try {
-                    userDao.create(u, p, "USER");
-                    dialog.close();
+            try {
+                userDao.create(u, p, "USER");
+                dialog.close();
 
-                    Alert successAlert = new Alert(Alert.AlertType.INFORMATION, "User '" + u + "' registered!");
-                    successAlert.showAndWait();
-                    infoLabel.setText("Registration successful! Please login.");
+                Alert successAlert = new Alert(Alert.AlertType.INFORMATION, "User '" + u + "' registered!");
+                successAlert.showAndWait();
+                infoLabel.setText("Registration successful! Please login.");
 
-                } catch (SQLException ex) {
-                    String errorMsg = ex.getMessage().contains("Duplicate entry") ? "Username already exists." : "Registration failed: " + ex.getMessage();
-                    Alert alert = new Alert(Alert.AlertType.ERROR, errorMsg);
-                    alert.initOwner(dialog);
-                    alert.setHeaderText(null);
-                    alert.showAndWait();
-                }
+            } catch (SQLException ex) {
+                String errorMsg = ex.getMessage().contains("Duplicate entry") ? "Username already exists." : "Registration failed: " + ex.getMessage();
+                Alert alert = new Alert(Alert.AlertType.ERROR, errorMsg);
+                alert.initOwner(dialog);
+                alert.setHeaderText(null);
+                alert.showAndWait();
             }
         });
 
         Button cancelBtn = new Button("Cancel");
-        cancelBtn.setOnAction(new EventHandler<ActionEvent>() {
-            @Override
-            public void handle(ActionEvent event) {
-                dialog.close();
-            }
-        });
+        cancelBtn.setOnAction(event -> dialog.close());
 
         HBox buttons = new HBox(16);
         buttons.setAlignment(Pos.CENTER);

@@ -8,12 +8,8 @@ import com.example.musiclibrary.model.OrderItem;
 import com.example.musiclibrary.model.Track;
 import com.example.musiclibrary.session.SessionManager;
 import javafx.beans.property.*;
-import javafx.beans.value.ChangeListener;
-import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-import javafx.event.ActionEvent;
-import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
@@ -21,7 +17,6 @@ import javafx.scene.control.*;
 import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
-import javafx.util.Callback;
 
 import java.math.BigDecimal;
 import java.sql.SQLException;
@@ -53,81 +48,40 @@ public class OrderManagementController {
     @FXML
     private void initialize() {
         // order table columns
-        colOrderId.setCellValueFactory(new Callback<TableColumn.CellDataFeatures<Order, Number>, ObservableValue<Number>>() {
-            @Override
-            public ObservableValue<Number> call(TableColumn.CellDataFeatures<Order, Number> param) {
-                return new SimpleIntegerProperty(param.getValue().getId());
+        colOrderId.setCellValueFactory(param -> new SimpleIntegerProperty(param.getValue().getId()));
+
+        colOrderDate.setCellValueFactory(param -> {
+            if (param.getValue().getOrderDate() == null) {
+                return new SimpleStringProperty("");
             }
+            String formattedDate = param.getValue().getOrderDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
+            return new SimpleStringProperty(formattedDate);
         });
 
-        colOrderDate.setCellValueFactory(new Callback<TableColumn.CellDataFeatures<Order, String>, ObservableValue<String>>() {
-            @Override
-            public ObservableValue<String> call(TableColumn.CellDataFeatures<Order, String> param) {
-                if (param.getValue().getOrderDate() == null) {
-                    return new SimpleStringProperty("");
-                }
-                String formattedDate = param.getValue().getOrderDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
-                return new SimpleStringProperty(formattedDate);
-            }
-        });
+        colStatus.setCellValueFactory(param -> new SimpleStringProperty(param.getValue().getStatus()));
 
-        colStatus.setCellValueFactory(new Callback<TableColumn.CellDataFeatures<Order, String>, ObservableValue<String>>() {
-            @Override
-            public ObservableValue<String> call(TableColumn.CellDataFeatures<Order, String> param) {
-                return new SimpleStringProperty(param.getValue().getStatus());
-            }
-        });
-
-        colTotal.setCellValueFactory(new Callback<TableColumn.CellDataFeatures<Order, BigDecimal>, ObservableValue<BigDecimal>>() {
-            @Override
-            public ObservableValue<BigDecimal> call(TableColumn.CellDataFeatures<Order, BigDecimal> param) {
-                return new SimpleObjectProperty<>(param.getValue().getTotalAmount());
-            }
-        });
+        colTotal.setCellValueFactory(param -> new SimpleObjectProperty<>(param.getValue().getTotalAmount()));
 
         // --- Order Item Table Columns ---
-        colTrack.setCellValueFactory(new Callback<TableColumn.CellDataFeatures<OrderItem, String>, ObservableValue<String>>() {
-            @Override
-            public ObservableValue<String> call(TableColumn.CellDataFeatures<OrderItem, String> param) {
-                return new SimpleStringProperty(getTrackLabel(param.getValue().getTrackId()));
-            }
-        });
+        colTrack.setCellValueFactory(param -> new SimpleStringProperty(getTrackLabel(param.getValue().getTrackId())));
 
-        colQuantity.setCellValueFactory(new Callback<TableColumn.CellDataFeatures<OrderItem, Number>, ObservableValue<Number>>() {
-            @Override
-            public ObservableValue<Number> call(TableColumn.CellDataFeatures<OrderItem, Number> param) {
-                return new SimpleIntegerProperty(param.getValue().getQuantity());
-            }
-        });
+        colQuantity.setCellValueFactory(param -> new SimpleIntegerProperty(param.getValue().getQuantity()));
 
-        colUnitPrice.setCellValueFactory(new Callback<TableColumn.CellDataFeatures<OrderItem, BigDecimal>, ObservableValue<BigDecimal>>() {
-            @Override
-            public ObservableValue<BigDecimal> call(TableColumn.CellDataFeatures<OrderItem, BigDecimal> param) {
-                return new SimpleObjectProperty<>(param.getValue().getUnitPrice());
-            }
-        });
+        colUnitPrice.setCellValueFactory(param -> new SimpleObjectProperty<>(param.getValue().getUnitPrice()));
 
-        colLineTotal.setCellValueFactory(new Callback<TableColumn.CellDataFeatures<OrderItem, BigDecimal>, ObservableValue<BigDecimal>>() {
-            @Override
-            public ObservableValue<BigDecimal> call(TableColumn.CellDataFeatures<OrderItem, BigDecimal> param) {
-                return new SimpleObjectProperty<>(param.getValue().getLineTotal());
-            }
-        });
+        colLineTotal.setCellValueFactory(param -> new SimpleObjectProperty<>(param.getValue().getLineTotal()));
 
         orderTable.setItems(orders);
         orderItemTable.setItems(orderItems);
 
         // when an order is selected, show its items and shipping city
-        orderTable.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<Order>() {
-            @Override
-            public void changed(ObservableValue<? extends Order> observable, Order oldValue, Order newValue) {
-                if (newValue != null) {
-                    loadOrderItems(newValue.getId());
-                    shippingCityField.setText(newValue.getShippingCity());
-                } else {
-                    orderItems.clear();
-                    shippingCityField.clear();
-                }
+        orderTable.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
+            if (newValue != null) {
+                loadOrderItems(newValue.getId());
+                shippingCityField.setText(newValue.getShippingCity());
+            } else {
+                orderItems.clear();
+                shippingCityField.clear();
             }
         });
 
@@ -250,36 +204,16 @@ public class OrderManagementController {
         itemTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
         TableColumn<OrderItem, String> trackCol = new TableColumn<>("Track");
-        trackCol.setCellValueFactory(new Callback<TableColumn.CellDataFeatures<OrderItem, String>, ObservableValue<String>>() {
-            @Override
-            public ObservableValue<String> call(TableColumn.CellDataFeatures<OrderItem, String> param) {
-                return new SimpleStringProperty(getTrackLabel(param.getValue().getTrackId()));
-            }
-        });
+        trackCol.setCellValueFactory(param -> new SimpleStringProperty(getTrackLabel(param.getValue().getTrackId())));
 
         TableColumn<OrderItem, Number> qtyCol = new TableColumn<>("Qty");
-        qtyCol.setCellValueFactory(new Callback<TableColumn.CellDataFeatures<OrderItem, Number>, ObservableValue<Number>>() {
-            @Override
-            public ObservableValue<Number> call(TableColumn.CellDataFeatures<OrderItem, Number> param) {
-                return new SimpleIntegerProperty(param.getValue().getQuantity());
-            }
-        });
+        qtyCol.setCellValueFactory(param -> new SimpleIntegerProperty(param.getValue().getQuantity()));
 
         TableColumn<OrderItem, BigDecimal> priceCol = new TableColumn<>("Price");
-        priceCol.setCellValueFactory(new Callback<TableColumn.CellDataFeatures<OrderItem, BigDecimal>, ObservableValue<BigDecimal>>() {
-            @Override
-            public ObservableValue<BigDecimal> call(TableColumn.CellDataFeatures<OrderItem, BigDecimal> param) {
-                return new SimpleObjectProperty<>(param.getValue().getUnitPrice());
-            }
-        });
+        priceCol.setCellValueFactory(param -> new SimpleObjectProperty<>(param.getValue().getUnitPrice()));
 
         TableColumn<OrderItem, BigDecimal> totCol = new TableColumn<>("Total");
-        totCol.setCellValueFactory(new Callback<TableColumn.CellDataFeatures<OrderItem, BigDecimal>, ObservableValue<BigDecimal>>() {
-            @Override
-            public ObservableValue<BigDecimal> call(TableColumn.CellDataFeatures<OrderItem, BigDecimal> param) {
-                return new SimpleObjectProperty<>(param.getValue().getLineTotal());
-            }
-        });
+        totCol.setCellValueFactory(param -> new SimpleObjectProperty<>(param.getValue().getLineTotal()));
 
         itemTable.getColumns().add(trackCol);
         itemTable.getColumns().add(qtyCol);
@@ -287,12 +221,7 @@ public class OrderManagementController {
         itemTable.getColumns().add(totCol);
 
         Button closeBtn = new Button("Close");
-        closeBtn.setOnAction(new EventHandler<ActionEvent>() {
-            @Override
-            public void handle(ActionEvent event) {
-                dialog.close();
-            }
-        });
+        closeBtn.setOnAction(event -> dialog.close());
 
         VBox vbox = new VBox(10);
         vbox.setPadding(new Insets(20));
@@ -303,7 +232,7 @@ public class OrderManagementController {
     }
 
     private String getTrackLabel(int trackId) {
-        // If already looked this up before, return the saved name
+        // if already looked this up before, return the saved name
         if (trackLabelCache.containsKey(trackId)) {
             return trackLabelCache.get(trackId);
         }
