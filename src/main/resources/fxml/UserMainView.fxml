@@ -26,6 +26,9 @@
             <children>
                 <Label text="Music Library - User" styleClass="title-label"/>
                 <Label fx:id="welcomeLabel"/>
+
+                <Button text="Edit Profile" onAction="#handleEditProfile"/>
+
                 <Button text="Logout" onAction="#handleLogout"/>
             </children>
         </HBox>
