@@ -159,7 +159,7 @@ public class LoginController {
         vbox.setPadding(new Insets(20));
         vbox.getChildren().addAll(grid, buttons);
 
-        dialog.setScene(new Scene(vbox, 450, 250));
+        dialog.setScene(new Scene(vbox, 500, 300));
         dialog.centerOnScreen();
         dialog.showAndWait();
     }
