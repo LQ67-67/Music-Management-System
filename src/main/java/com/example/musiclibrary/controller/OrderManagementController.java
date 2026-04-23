@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 
 public class OrderManagementController {
+
     @FXML private TableView<Order> orderTable;
     @FXML private TableColumn<Order, Number> colOrderId;
     @FXML private TableColumn<Order, String> colOrderDate;
@@ -42,23 +43,32 @@ public class OrderManagementController {
 
     private final ObservableList<Order> orders = FXCollections.observableArrayList();
     private final ObservableList<OrderItem> orderItems = FXCollections.observableArrayList();
+
     private final OrderDao orderDao = new OrderDao();
     private final OrderItemDao orderItemDao = new OrderItemDao();
     private final TrackDao trackDao = new TrackDao();
+
+    // cache track labels so we don't hit the DB on every cell render
     private final Map<Integer, String> trackLabelCache = new HashMap<>();
 
     @FXML
     private void initialize() {
-        // order table columns
+        // set up order table columns
         colOrderId.setCellValueFactory(d -> new SimpleIntegerProperty(d.getValue().getId()));
+
         colOrderDate.setCellValueFactory(d -> {
-            if (d.getValue().getOrderDate() == null) return new SimpleStringProperty("");
-            return new SimpleStringProperty(d.getValue().getOrderDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
+            if (d.getValue().getOrderDate() == null) {
+                return new SimpleStringProperty("");
+            }
+            String formatted = d.getValue().getOrderDate()
+                    .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
+            return new SimpleStringProperty(formatted);
         });
+
         colStatus.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().getStatus()));
         colTotal.setCellValueFactory(d -> new SimpleObjectProperty<>(d.getValue().getTotalAmount()));
 
-        // order item table columns
+        // set up order items table columns
         colTrack.setCellValueFactory(d -> new SimpleStringProperty(getTrackLabel(d.getValue().getTrackId())));
         colQuantity.setCellValueFactory(d -> new SimpleIntegerProperty(d.getValue().getQuantity()));
         colUnitPrice.setCellValueFactory(d -> new SimpleObjectProperty<>(d.getValue().getUnitPrice()));
@@ -67,11 +77,11 @@ public class OrderManagementController {
         orderTable.setItems(orders);
         orderItemTable.setItems(orderItems);
 
-        // when an order is selected, show its items and shipping city
-        orderTable.getSelectionModel().selectedItemProperty().addListener((obs, old, sel) -> {
-            if (sel != null) {
-                loadOrderItems(sel.getId());
-                shippingCityField.setText(sel.getShippingCity());
+        // when an order row is selected, load its items below
+        orderTable.getSelectionModel().selectedItemProperty().addListener((obs, old, selected) -> {
+            if (selected != null) {
+                loadOrderItems(selected.getId());
+                shippingCityField.setText(selected.getShippingCity());
             } else {
                 orderItems.clear();
                 shippingCityField.clear();
@@ -82,9 +92,14 @@ public class OrderManagementController {
     }
 
     private void loadOrders() {
-        if (!SessionManager.isLoggedIn()) { showError("You must be logged in to view orders."); return; }
+        if (!SessionManager.isLoggedIn()) {
+            showError("You must be logged in to view orders.");
+            return;
+        }
+
         try {
-            List<Order> list = orderDao.findByUser(SessionManager.getCurrentUser().getId());
+            int userId = SessionManager.getCurrentUser().getId();
+            List<Order> list = orderDao.findByUser(userId);
             orders.setAll(list);
         } catch (SQLException e) {
             showError("Failed to load orders: " + e.getMessage());
@@ -92,38 +107,60 @@ public class OrderManagementController {
     }
 
     private void loadOrderItems(int orderId) {
-        try { orderItems.setAll(orderItemDao.findByOrder(orderId)); }
-        catch (SQLException e) { showError("Failed to load order items: " + e.getMessage()); }
+        try {
+            orderItems.setAll(orderItemDao.findByOrder(orderId));
+        } catch (SQLException e) {
+            showError("Failed to load order items: " + e.getMessage());
+        }
     }
 
-    // set selected order status to CONFIRMED and save shipping city
     @FXML
     private void handleConfirmOrder() {
-        Order sel = orderTable.getSelectionModel().getSelectedItem();
-        if (sel == null) { showError("Please select an order first."); return; }
-        sel.setStatus("CONFIRMED");
-        sel.setShippingCity(shippingCityField.getText());
-        try { orderDao.update(sel); loadOrders(); }
-        catch (SQLException e) { showError("Failed to confirm order: " + e.getMessage()); }
+        Order selected = orderTable.getSelectionModel().getSelectedItem();
+        if (selected == null) {
+            showError("Please select an order first.");
+            return;
+        }
+
+        selected.setStatus("CONFIRMED");
+        selected.setShippingCity(shippingCityField.getText());
+
+        try {
+            orderDao.update(selected);
+            loadOrders();
+        } catch (SQLException e) {
+            showError("Failed to confirm order: " + e.getMessage());
+        }
     }
 
-    // set selected order status to CANCELLED
     @FXML
     private void handleCancelOrder() {
-        Order sel = orderTable.getSelectionModel().getSelectedItem();
-        if (sel == null) { showError("Please select an order first."); return; }
-        sel.setStatus("CANCELLED");
-        try { orderDao.update(sel); loadOrders(); }
-        catch (SQLException e) { showError("Failed to cancel order: " + e.getMessage()); }
+        Order selected = orderTable.getSelectionModel().getSelectedItem();
+        if (selected == null) {
+            showError("Please select an order first.");
+            return;
+        }
+
+        selected.setStatus("CANCELLED");
+
+        try {
+            orderDao.update(selected);
+            loadOrders();
+        } catch (SQLException e) {
+            showError("Failed to cancel order: " + e.getMessage());
+        }
     }
 
-    // delete selected order and all its items
     @FXML
     private void handleDeleteOrder() {
-        Order sel = orderTable.getSelectionModel().getSelectedItem();
-        if (sel == null) { showError("Please select an order first."); return; }
+        Order selected = orderTable.getSelectionModel().getSelectedItem();
+        if (selected == null) {
+            showError("Please select an order first.");
+            return;
+        }
+
         try {
-            orderDao.delete(sel.getId());
+            orderDao.delete(selected.getId());
             loadOrders();
             orderItems.clear();
             shippingCityField.clear();
@@ -132,42 +169,53 @@ public class OrderManagementController {
         }
     }
 
-    // show popup with a full invoice for the selected order
     @FXML
     private void handleViewInvoice() {
-        Order sel = orderTable.getSelectionModel().getSelectedItem();
-        if (sel == null) { showError("Please select an order to view invoice."); return; }
+        Order selected = orderTable.getSelectionModel().getSelectedItem();
+        if (selected == null) {
+            showError("Please select an order to view invoice.");
+            return;
+        }
 
         Stage dialog = new Stage();
         dialog.initModality(Modality.APPLICATION_MODAL);
-        dialog.setTitle("Invoice - Order #" + sel.getId());
+        dialog.setTitle("Invoice - Order #" + selected.getId());
 
-        Label orderLabel = new Label("Order #" + sel.getId());
+        Label orderLabel = new Label("Order #" + selected.getId());
         orderLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
-        Label dateLabel   = new Label("Date: " + (sel.getOrderDate() == null ? "N/A" : sel.getOrderDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))));
-        Label statusLabel = new Label("Status: " + sel.getStatus());
-        Label totalLabel  = new Label("Total: " + sel.getTotalAmount());
+
+        String dateText = selected.getOrderDate() == null
+                ? "N/A"
+                : selected.getOrderDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
+
+        Label dateLabel   = new Label("Date: " + dateText);
+        Label statusLabel = new Label("Status: " + selected.getStatus());
+        Label totalLabel  = new Label("Total: " + selected.getTotalAmount());
         totalLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
 
+        // reuse the already-loaded order items for the invoice table
         TableView<OrderItem> itemTable = new TableView<>(orderItems);
         itemTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
-        TableColumn<OrderItem, String> trackCol = new TableColumn<>("Track");
-        TableColumn<OrderItem, Number> qtyCol = new TableColumn<>("Qty");
+        TableColumn<OrderItem, String>     trackCol = new TableColumn<>("Track");
+        TableColumn<OrderItem, Number>     qtyCol   = new TableColumn<>("Qty");
         TableColumn<OrderItem, BigDecimal> priceCol = new TableColumn<>("Price");
-        TableColumn<OrderItem, BigDecimal> totCol = new TableColumn<>("Total");
+        TableColumn<OrderItem, BigDecimal> totCol   = new TableColumn<>("Total");
 
         trackCol.setCellValueFactory(d -> new SimpleStringProperty(getTrackLabel(d.getValue().getTrackId())));
         qtyCol.setCellValueFactory(d -> new SimpleIntegerProperty(d.getValue().getQuantity()));
         priceCol.setCellValueFactory(d -> new SimpleObjectProperty<>(d.getValue().getUnitPrice()));
         totCol.setCellValueFactory(d -> new SimpleObjectProperty<>(d.getValue().getLineTotal()));
+
         itemTable.getColumns().addAll(trackCol, qtyCol, priceCol, totCol);
 
         Button closeBtn = new Button("Close");
         closeBtn.setOnAction(e -> dialog.close());
 
-        VBox vbox = new VBox(10, orderLabel, dateLabel, statusLabel, totalLabel, new Label("Items:"), itemTable, closeBtn);
+        VBox vbox = new VBox(10, orderLabel, dateLabel, statusLabel, totalLabel,
+                new Label("Items:"), itemTable, closeBtn);
         vbox.setPadding(new Insets(20));
+
         dialog.setScene(new Scene(vbox, 600, 500));
         dialog.showAndWait();
     }
@@ -176,8 +224,11 @@ public class OrderManagementController {
     private String getTrackLabel(int trackId) {
         return trackLabelCache.computeIfAbsent(trackId, id -> {
             try {
-                Track t = trackDao.findById(id);
-                return t == null ? "Track #" + id : t.getTitle() + " - " + t.getArtist();
+                Track track = trackDao.findById(id);
+                if (track == null) {
+                    return "Track #" + id;
+                }
+                return track.getTitle() + " - " + track.getArtist();
             } catch (SQLException e) {
                 return "Track #" + id;
             }
