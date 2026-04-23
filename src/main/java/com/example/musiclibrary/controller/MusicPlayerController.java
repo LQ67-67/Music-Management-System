@@ -2,9 +2,12 @@ package com.example.musiclibrary.controller;
 
 import com.example.musiclibrary.util.TrackMediaResolver;
 import javafx.animation.PauseTransition;
+import javafx.event.ActionEvent;
+import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.media.Media;
 import javafx.scene.media.MediaException;
 import javafx.scene.media.MediaPlayer;
@@ -35,42 +38,54 @@ public class MusicPlayerController {
     @FXML
     private void initialize() {
         playlist = new ArrayList<>();
-
         try {
             playlist = new ArrayList<>(TrackMediaResolver.listMusicFiles());
         } catch (Exception e) {
-            showError("Failed to load music files: " + e.getMessage());
+            Alert alert = new Alert(Alert.AlertType.ERROR, "Failed to load music files: " + e.getMessage());
+            alert.showAndWait();
         }
 
-        updateTrackImage(null);
+        if (trackImageView != null) {
+            trackImageView.setImage(TrackMediaResolver.loadTrackImage(null, null));
+        }
 
         if (playlistView != null) {
             playlistView.setItems(javafx.collections.FXCollections.observableArrayList(playlist));
 
             // double-click a track to play it
-            playlistView.setOnMouseClicked(e -> {
-                if (e.getClickCount() == 2) {
-                    int idx = playlistView.getSelectionModel().getSelectedIndex();
-                    if (idx >= 0) {
-                        playTrack(idx);
+            playlistView.setOnMouseClicked(new EventHandler<MouseEvent>() {
+                @Override
+                public void handle(MouseEvent event) {
+                    if (event.getClickCount() == 2) {
+                        int selectedIndex = playlistView.getSelectionModel().getSelectedIndex();
+                        if (selectedIndex >= 0) {
+                            playTrack(selectedIndex);
+                        }
                     }
                 }
             });
         }
 
         if (progressSlider != null) {
-            // pause while scrubbing, resume after releasing
-            progressSlider.setOnMousePressed(e -> {
-                if (mediaPlayer != null) {
-                    mediaPlayer.pause();
+            // pause while dragging the slider
+            progressSlider.setOnMousePressed(new EventHandler<MouseEvent>() {
+                @Override
+                public void handle(MouseEvent event) {
+                    if (mediaPlayer != null) {
+                        mediaPlayer.pause();
+                    }
                 }
             });
 
-            progressSlider.setOnMouseReleased(e -> {
-                if (mediaPlayer != null) {
-                    mediaPlayer.seek(Duration.seconds(progressSlider.getValue()));
-                    if (isPlaying) {
-                        mediaPlayer.play();
+            // resume when done dragging
+            progressSlider.setOnMouseReleased(new EventHandler<MouseEvent>() {
+                @Override
+                public void handle(MouseEvent event) {
+                    if (mediaPlayer != null) {
+                        mediaPlayer.seek(Duration.seconds(progressSlider.getValue()));
+                        if (isPlaying) {
+                            mediaPlayer.play();
+                        }
                     }
                 }
             });
@@ -78,9 +93,12 @@ public class MusicPlayerController {
 
         if (volumeSlider != null) {
             volumeSlider.setValue(50);
-            volumeSlider.setOnMouseDragged(e -> {
-                if (mediaPlayer != null) {
-                    mediaPlayer.setVolume(volumeSlider.getValue() / 100.0);
+            volumeSlider.setOnMouseDragged(new EventHandler<MouseEvent>() {
+                @Override
+                public void handle(MouseEvent event) {
+                    if (mediaPlayer != null) {
+                        mediaPlayer.setVolume(volumeSlider.getValue() / 100.0);
+                    }
                 }
             });
         }
@@ -98,7 +116,8 @@ public class MusicPlayerController {
         } else if (mediaPlayer == null && !playlist.isEmpty()) {
             playTrack(0);
         } else if (playlist.isEmpty()) {
-            showError("No music files found in playlist.");
+            Alert alert = new Alert(Alert.AlertType.ERROR, "No music files found in playlist.");
+            alert.showAndWait();
         }
     }
 
@@ -117,23 +136,27 @@ public class MusicPlayerController {
     @FXML
     private void handlePrevious() {
         if (!playlist.isEmpty()) {
-            int prevIndex = currentTrackIndex > 0 ? currentTrackIndex - 1 : playlist.size() - 1;
-            playTrack(prevIndex);
+            if (currentTrackIndex > 0) {
+                playTrack(currentTrackIndex - 1);
+            } else {
+                playTrack(playlist.size() - 1);
+            }
         }
     }
 
     @FXML
     private void handleNext() {
         if (!playlist.isEmpty()) {
-            int nextIndex = currentTrackIndex < playlist.size() - 1 ? currentTrackIndex + 1 : 0;
-            playTrack(nextIndex);
+            if (currentTrackIndex < playlist.size() - 1) {
+                playTrack(currentTrackIndex + 1);
+            } else {
+                playTrack(0);
+            }
         }
     }
 
     private void playTrack(int index) {
-        if (index < 0 || index >= playlist.size()) {
-            return;
-        }
+        if (index < 0 || index >= playlist.size()) return;
 
         try {
             if (mediaPlayer != null) {
@@ -142,42 +165,62 @@ public class MusicPlayerController {
 
             currentTrackIndex = index;
             String trackFile = playlist.get(index);
-
             URL url = TrackMediaResolver.findMusicUrl(trackFile);
+
             if (url == null) {
-                showError("Music file not found: " + trackFile);
+                Alert alert = new Alert(Alert.AlertType.ERROR, "Music file not found: " + trackFile);
+                alert.showAndWait();
                 return;
             }
 
             Media media = new Media(url.toExternalForm());
-            media.setOnError(() -> showError("Audio load failed: " + getErrorMsg(media.getError())));
-
-            mediaPlayer = new MediaPlayer(media);
-            mediaPlayer.setOnError(() -> showError("Playback failed: " + getErrorMsg(mediaPlayer.getError())));
-            mediaPlayer.setVolume(volumeSlider.getValue() / 100.0);
-
-            // set the slider max once the duration is known
-            mediaPlayer.setOnReady(() -> {
-                progressSlider.setMax(mediaPlayer.getMedia().getDuration().toSeconds());
-                updateTimeLabel();
+            media.setOnError(new Runnable() {
+                @Override
+                public void run() {
+                    String errorMsg = getErrorMsg(media.getError());
+                    Alert alert = new Alert(Alert.AlertType.ERROR, "Audio load failed: " + errorMsg);
+                    alert.showAndWait();
+                }
             });
 
-            // auto-advance to the next track when this one ends
-            mediaPlayer.setOnEndOfMedia(() -> {
-                if (currentTrackIndex < playlist.size() - 1) {
-                    playTrack(currentTrackIndex + 1);
-                } else {
-                    // reached end of playlist
-                    mediaPlayer.pause();
-                    isPlaying = false;
-                    currentTrackIndex = -1;
-                    nowPlayingLabel.setText("Paused");
-                    progressSlider.setValue(0);
-                    timeLabel.setText("00:00 / 00:00");
-                    updateTrackImage(null);
-                    updateButtonState();
-                    if (updateTimer != null) {
-                        updateTimer.stop();
+            mediaPlayer = new MediaPlayer(media);
+            mediaPlayer.setOnError(new Runnable() {
+                @Override
+                public void run() {
+                    String errorMsg = getErrorMsg(mediaPlayer.getError());
+                    Alert alert = new Alert(Alert.AlertType.ERROR, "Playback failed: " + errorMsg);
+                    alert.showAndWait();
+                }
+            });
+
+            mediaPlayer.setVolume(volumeSlider.getValue() / 100.0);
+
+            // set the slider max length once the track is fully loaded
+            mediaPlayer.setOnReady(new Runnable() {
+                @Override
+                public void run() {
+                    progressSlider.setMax(mediaPlayer.getMedia().getDuration().toSeconds());
+                    updateTimeLabel();
+                }
+            });
+
+            // automatically move to the next track when this one ends
+            mediaPlayer.setOnEndOfMedia(new Runnable() {
+                @Override
+                public void run() {
+                    if (currentTrackIndex < playlist.size() - 1) {
+                        playTrack(currentTrackIndex + 1);
+                    } else {
+                        // End of playlist
+                        mediaPlayer.pause();
+                        isPlaying = false;
+                        currentTrackIndex = -1;
+                        nowPlayingLabel.setText("Paused");
+                        progressSlider.setValue(0);
+                        timeLabel.setText("00:00 / 00:00");
+                        if (trackImageView != null) trackImageView.setImage(TrackMediaResolver.loadTrackImage(null, null));
+                        updateButtonState();
+                        if (updateTimer != null) updateTimer.stop();
                     }
                 }
             });
@@ -185,24 +228,31 @@ public class MusicPlayerController {
             mediaPlayer.play();
             isPlaying = true;
             nowPlayingLabel.setText("Now Playing: " + trackFile);
-            updateTrackImage(trackFile);
+
+            if (trackImageView != null) {
+                trackImageView.setImage(TrackMediaResolver.loadTrackImage(null, trackFile));
+            }
+
             playlistView.getSelectionModel().select(index);
             updateButtonState();
             startUpdateTimer();
 
         } catch (Exception e) {
-            showError("Failed to play track: " + e.getMessage());
+            Alert alert = new Alert(Alert.AlertType.ERROR, "Failed to play track: " + e.getMessage());
+            alert.showAndWait();
         }
     }
 
-    // tick every 100ms to update the progress slider and time label
     private void startUpdateTimer() {
         updateTimer = new PauseTransition(Duration.millis(100));
-        updateTimer.setOnFinished(e -> {
-            if (isPlaying && mediaPlayer != null) {
-                progressSlider.setValue(mediaPlayer.getCurrentTime().toSeconds());
-                updateTimeLabel();
-                startUpdateTimer();
+        updateTimer.setOnFinished(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent event) {
+                if (isPlaying && mediaPlayer != null) {
+                    progressSlider.setValue(mediaPlayer.getCurrentTime().toSeconds());
+                    updateTimeLabel();
+                    startUpdateTimer(); // Loop the timer
+                }
             }
         });
         updateTimer.playFromStart();
@@ -210,34 +260,27 @@ public class MusicPlayerController {
 
     private void updateTimeLabel() {
         if (mediaPlayer != null) {
-            String current = formatTime(mediaPlayer.getCurrentTime());
-            String total = formatTime(mediaPlayer.getMedia().getDuration());
-            timeLabel.setText(current + " / " + total);
-        }
-    }
+            int currentMinutes = (int) mediaPlayer.getCurrentTime().toMinutes();
+            int currentSeconds = (int) mediaPlayer.getCurrentTime().toSeconds() % 60;
 
-    private String formatTime(Duration d) {
-        int minutes = (int) d.toMinutes();
-        int seconds = (int) d.toSeconds() % 60;
-        return String.format("%02d:%02d", minutes, seconds);
+            int totalMinutes = (int) mediaPlayer.getMedia().getDuration().toMinutes();
+            int totalSeconds = (int) mediaPlayer.getMedia().getDuration().toSeconds() % 60;
+
+            String currentTimeStr = String.format("%02d:%02d", currentMinutes, currentSeconds);
+            String totalTimeStr = String.format("%02d:%02d", totalMinutes, totalSeconds);
+
+            timeLabel.setText(currentTimeStr + " / " + totalTimeStr);
+        }
     }
 
     private void updateButtonState() {
-        boolean hasItems = !playlist.isEmpty();
-
-        if (playButton != null)    playButton.setDisable(isPlaying || !hasItems);
-        if (pauseButton != null)   pauseButton.setDisable(!isPlaying);
-        if (previousButton != null) previousButton.setDisable(!hasItems);
-        if (nextButton != null)    nextButton.setDisable(!hasItems);
+        boolean hasMusic = !playlist.isEmpty();
+        if (playButton != null) playButton.setDisable(isPlaying || !hasMusic);
+        if (pauseButton != null) pauseButton.setDisable(!isPlaying);
+        if (previousButton != null) previousButton.setDisable(!hasMusic);
+        if (nextButton != null) nextButton.setDisable(!hasMusic);
     }
 
-    private void updateTrackImage(String trackFile) {
-        if (trackImageView != null) {
-            trackImageView.setImage(TrackMediaResolver.loadTrackImage(null, trackFile));
-        }
-    }
-
-    // call this when the player window is closed to release resources
     public void dispose() {
         if (updateTimer != null) {
             updateTimer.stop();
@@ -251,16 +294,11 @@ public class MusicPlayerController {
     }
 
     private String getErrorMsg(MediaException ex) {
-        if (ex == null) {
-            return "Unknown media error";
-        }
+        if (ex == null) return "Unknown media error";
         String msg = ex.getMessage();
-        return (msg == null || msg.isEmpty()) ? ex.getType().name() : msg;
-    }
-
-    private void showError(String message) {
-        Alert alert = new Alert(Alert.AlertType.ERROR, message);
-        alert.setHeaderText(null);
-        alert.showAndWait();
+        if (msg == null || msg.isEmpty()) {
+            return ex.getType().name();
+        }
+        return msg;
     }
 }
