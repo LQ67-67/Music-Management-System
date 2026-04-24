@@ -94,7 +94,7 @@ public class UserMainController {
             if (s1 == null) return s2 == null ? 0 : -1;
             if (s2 == null) return 1;
 
-            // split the strings into chunks of digits and non-digits
+            // Split the strings into chunks of digits and non-digits
             String[] parts1 = s1.split("(?<=\\D)(?=\\d)|(?<=\\d)(?=\\D)");
             String[] parts2 = s2.split("(?<=\\D)(?=\\d)|(?<=\\d)(?=\\D)");
 
@@ -107,7 +107,7 @@ public class UserMainController {
                     int numCompare = Long.compare(Long.parseLong(p1), Long.parseLong(p2));
                     if (numCompare != 0) return numCompare;
                 } else {
-                    // otherwise, compare them alphabetically (ignoring case)
+                    // compare them alphabetically
                     int strCompare = p1.compareToIgnoreCase(p2);
                     if (strCompare != 0) return strCompare;
                 }
@@ -124,7 +124,6 @@ public class UserMainController {
         });
         colStock.setCellValueFactory(d -> new SimpleStringProperty(String.valueOf(d.getValue().getStockQty())));
     }
-
 
     @FXML
     public void handleEditProfile() {

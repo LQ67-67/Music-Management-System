@@ -10,8 +10,10 @@ import com.example.musiclibrary.session.SessionManager;
 import com.example.musiclibrary.util.TrackMediaResolver;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Insets;
@@ -186,12 +188,12 @@ public class AdminMainController {
         grid.setVgap(10);
         grid.setPadding(new Insets(20));
 
-        grid.add(new Label("Title:"),0,0); grid.add(titleField,1,0);
-        grid.add(new Label("Artist:"),0,1); grid.add(artistField,1,1);
-        grid.add(new Label("Album:"),0,2); grid.add(albumField,1,2);
-        grid.add(new Label("Genre:"),0,3); grid.add(genreField,1,3);
-        grid.add(new Label("Price:"),0,4); grid.add(priceField,1,4);
-        grid.add(new Label("Stock:"),0,5); grid.add(stockField,1,5);
+        grid.add(new Label("Title:"), 0, 0); grid.add(titleField, 1, 0);
+        grid.add(new Label("Artist:"), 0, 1); grid.add(artistField, 1, 1);
+        grid.add(new Label("Album:"), 0, 2); grid.add(albumField, 1, 2);
+        grid.add(new Label("Genre:"), 0, 3); grid.add(genreField, 1, 3);
+        grid.add(new Label("Price:"), 0, 4); grid.add(priceField, 1, 4);
+        grid.add(new Label("Stock:"), 0, 5); grid.add(stockField, 1, 5);
 
         Button saveBtn = new Button("Save");
         saveBtn.setOnAction(event -> {
@@ -333,10 +335,10 @@ public class AdminMainController {
         GridPane grid = new GridPane();
         grid.setHgap(10); grid.setVgap(10); grid.setPadding(new Insets(20));
 
-        grid.add(new Label("Name:"),0,0); grid.add(nameField,1,0);
-        grid.add(new Label("Email:"),0,1); grid.add(emailField,1,1);
-        grid.add(new Label("Phone:"),0,2); grid.add(phoneField,1,2);
-        grid.add(new Label("City:"),0,3); grid.add(cityField,1,3);
+        grid.add(new Label("Name:"), 0, 0); grid.add(nameField, 1, 0);
+        grid.add(new Label("Email:"), 0, 1); grid.add(emailField, 1, 1);
+        grid.add(new Label("Phone:"), 0, 2); grid.add(phoneField, 1, 2);
+        grid.add(new Label("City:"), 0, 3); grid.add(cityField, 1, 3);
 
         Button saveBtn = new Button("Save");
         saveBtn.setOnAction(event -> {
