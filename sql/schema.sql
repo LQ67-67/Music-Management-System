@@ -65,6 +65,9 @@ CREATE TABLE orders (
         ON UPDATE CASCADE ON DELETE RESTRICT
 );
 
+-- change the status column to a string with a maximum length of 20
+ALTER TABLE orders MODIFY status VARCHAR(20) DEFAULT 'PENDING';
+
 -- orderSchedule
 CREATE TABLE order_items (
     id INT AUTO_INCREMENT PRIMARY KEY,
