@@ -14,8 +14,8 @@
             xmlns="http://javafx.com/javafx"
             xmlns:fx="http://javafx.com/fxml"
             stylesheets="@../css/app.css"
-            prefWidth="600.0"
-            prefHeight="600.0">
+            prefWidth="800.0"
+            prefHeight="800.0">
 
     <top>
         <VBox spacing="10" style="-fx-border-color: #cccccc; -fx-border-width: 0 0 1 0;">

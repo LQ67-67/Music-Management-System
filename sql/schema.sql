@@ -93,7 +93,7 @@ INSERT INTO users (username, password_hash, role) VALUES
 
 INSERT INTO customers (name, email, phone, city) VALUES
 ('Alice', 'alice@example.com', '012-3456789', 'Kuala Lumpur'),
-('Bob',   'bob@example.com',   '013-9876543', 'Penang');
+('Bob', 'bob@example.com', '013-9876543', 'Penang');
 
 INSERT INTO tracks (title, artist, album, genre, price, stock_qty) VALUES
 ('1. Until Tomorrow''s Twilight (明日、夕暮れまで)', '北川勝利', 'ARIA The OVA ~ARIETTA~', 'Anime',  3.50, 100),
@@ -104,4 +104,5 @@ INSERT INTO tracks (title, artist, album, genre, price, stock_qty) VALUES
 ('6. The Promise of the Dandelion (蒲公英的约定)', 'Jay Chou', 'I am busy', 'Piano', 15.00, 100),
 ('7. Schubert''s Serenade (Ständchen)', 'Franz Schubert', 'Schwanengesang', 'Classics', 10.00, 70),
 ('8. Affections Touching Across Time (犬夜叉 時代を越える想い)', 'Kaoru Wada', 'Inuyasha', 'Piano', 15.00, 100),
-('9. Ievan Polkka (甩葱歌)', 'Hatsune Miku', 'Ievan Polkka', 'Electronic music', 8.00, 40);
+('9. Ievan Polkka (甩葱歌)', 'Hatsune Miku', 'Ievan Polkka', 'Electronic music', 8.00, 40),
+('10. Ariga Thesis','MUYKKE','Ariga Thesis','Remix', 5.20, 100);

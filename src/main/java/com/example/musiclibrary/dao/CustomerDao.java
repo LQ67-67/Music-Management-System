@@ -11,8 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class CustomerDao {
-
-    // Find all customers
+    // find all customers
     public List<Customer> findAll() throws SQLException {
         String sql = "SELECT id, name, email, phone, city FROM customers ORDER BY name";
         Connection conn = DBConnectionManager.getConnection();
@@ -36,7 +35,7 @@ public class CustomerDao {
         return list;
     }
 
-    // Create new customer
+    // create new customer
     public int create(Customer customer) throws SQLException {
         String sql = "INSERT INTO customers (name, email, phone, city) VALUES (?, ?, ?, ?)";
         Connection conn = DBConnectionManager.getConnection();
@@ -61,7 +60,7 @@ public class CustomerDao {
         return id;
     }
 
-    // Update existing customer
+    // update existing customer
     public void update(Customer customer) throws SQLException {
         String sql = "UPDATE customers SET name = ?, email = ?, phone = ?, city = ? WHERE id = ?";
         Connection conn = DBConnectionManager.getConnection();

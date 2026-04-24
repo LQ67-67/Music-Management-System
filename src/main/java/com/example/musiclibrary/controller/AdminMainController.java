@@ -45,7 +45,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class AdminMainController {
-
     private static final Logger LOGGER = Logger.getLogger(AdminMainController.class.getName());
 
     @FXML private Label welcomeLabel;
@@ -62,9 +61,9 @@ public class AdminMainController {
     private final TrackDao trackDao = new TrackDao();
     private final CustomerDao customerDao = new CustomerDao();
 
-    // Resource directories for uploaded files
+    // resource directories for uploaded files
     private static final String IMAGE_DIR = "src/main/resources/images/tracks/";
-    private static final String AUDIO_DIR = "src/main/resources/audio/";
+    private static final String AUDIO_DIR = "src/main/resources/musics/";
 
     @FXML
     private void initialize() {
@@ -596,19 +595,19 @@ public class AdminMainController {
     private String lastPieTitle = "Sales by Genre";
 
     private VBox buildReportsTabContent() {
-        Label activeTracksLabel  = new Label();
+        // initialize all components (Keeping the original logic)
+        Label activeTracksLabel = new Label();
         Label customerCountLabel = new Label();
-        Label orderCountLabel    = new Label();
-        Label totalSalesLabel    = new Label();
+        Label orderCountLabel = new Label();
+        Label totalSalesLabel = new Label();
 
         TableView<String> reportTable = new TableView<>();
         reportTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
-        reportTable.setPrefHeight(180);
+        reportTable.setPrefHeight(250); // slightly increased to fit the left column layout better
 
         Label avgLabel = new Label(), sumLabel = new Label(), maxLabel = new Label(), minLabel = new Label();
 
-        // Pie chart canvas
-        Canvas pieCanvas = new Canvas(380, 260);
+        Canvas pieCanvas = new Canvas(550, 350); // enlarge the Canvas to match your "Large Chart" request
 
         ComboBox<String> reportType = new ComboBox<>();
         reportType.getItems().addAll("Summary", "Sales by Genre", "Sales by City", "Sales by Date");
@@ -632,22 +631,66 @@ public class AdminMainController {
         Button exportUserListBtn = new Button("Export User List (TXT)");
         exportUserListBtn.setOnAction(e -> exportUserList());
 
-        HBox exportButtons = new HBox(10, exportPieBtn, exportUserListBtn);
+        // left Column (2/3 Width)
+        VBox leftColumn = new VBox(15);
+        leftColumn.setPadding(new Insets(10));
+        HBox.setHgrow(leftColumn, Priority.ALWAYS); // Allow the left column to take up remaining flexible space
 
-        VBox box = new VBox(10);
-        box.setPadding(new Insets(12));
-        box.getChildren().addAll(
-                new Label("System Summary"),
-                activeTracksLabel, customerCountLabel, orderCountLabel, totalSalesLabel,
+        // top Left: dropdown menu
+        HBox controlsBox = new HBox(10, new Label("Select Report:"), reportType);
+        controlsBox.setAlignment(Pos.CENTER_LEFT);
+
+        // middle-top left: chart area
+        VBox chartCard = new VBox(10, new Label("📊 Sales Chart"), pieCanvas);
+        chartCard.setStyle("-fx-background-color: white; -fx-border-color: #e0e0e0; -fx-border-radius: 5; -fx-padding: 15;");
+        chartCard.setAlignment(Pos.CENTER);
+
+        // bottom left: table area
+        VBox tableCard = new VBox(10, new Label("📋 Report Table"), reportTable);
+        tableCard.setStyle("-fx-background-color: white; -fx-border-color: #e0e0e0; -fx-border-radius: 5; -fx-padding: 15;");
+        VBox.setVgrow(tableCard, Priority.ALWAYS);
+
+        leftColumn.getChildren().addAll(controlsBox, chartCard, tableCard);
+
+
+        // right Column (1/3 Width)
+        VBox rightColumn = new VBox(20);
+        rightColumn.setPadding(new Insets(10));
+        rightColumn.setPrefWidth(300); // Fix a rough width, allowing the left column to auto-adjust
+        rightColumn.setMinWidth(250);
+
+        // top Right: summary card
+        VBox summaryCard = new VBox(12,
+                new Label("📌 Summary Card"),
                 new Separator(),
-                new Label("Sales Reports"), reportType, reportTable,
-                new Label("Statistics"), avgLabel, sumLabel, maxLabel, minLabel,
-                new Separator(),
-                new Label("Pie Chart"), pieCanvas,
-                exportButtons,
-                refreshBtn
+                activeTracksLabel,
+                customerCountLabel,
+                orderCountLabel,
+                totalSalesLabel
         );
-        return box;
+        summaryCard.setStyle("-fx-background-color: #f8f9fa; -fx-border-color: #e0e0e0; -fx-border-radius: 5; -fx-padding: 15;");
+
+        // middle right: statistics card
+        VBox statsCard = new VBox(12,
+                new Label("📈 Statistics"), new Separator(), avgLabel, sumLabel, maxLabel, minLabel
+        );
+        statsCard.setStyle("-fx-background-color: #f8f9fa; -fx-border-color: #e0e0e0; -fx-border-radius: 5; -fx-padding: 15;");
+
+        // bottom right: action buttons
+        VBox actionCard = new VBox(10, refreshBtn, exportPieBtn, exportUserListBtn);
+        actionCard.setAlignment(Pos.CENTER_LEFT);
+
+        rightColumn.getChildren().addAll(summaryCard, statsCard, actionCard);
+
+
+        // assemble the main container
+        HBox mainSplitContent = new HBox(15, leftColumn, rightColumn);
+        mainSplitContent.setPadding(new Insets(15));
+
+        // return the outermost VBox
+        VBox mainBox = new VBox(mainSplitContent);
+        VBox.setVgrow(mainSplitContent, Priority.ALWAYS);
+        return mainBox;
     }
 
     private void refreshReport(String reportType) {
@@ -866,7 +909,7 @@ public class AdminMainController {
         return sb.toString();
     }
 
-    // Exports the users table from the database.
+    // exports the users table from the database.
     private void exportUserList() {
         String sql = "SELECT id, username, role FROM users ORDER BY id";
         List<String[]> rows = new ArrayList<>();

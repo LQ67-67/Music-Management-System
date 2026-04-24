@@ -84,6 +84,8 @@ public class UserMainController {
     }
 
     private void setupTrackTableColumns() {
+        trackTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN); // make the table automatically expand to fill the width
+
         colCover.setCellValueFactory(d -> new SimpleObjectProperty<>(d.getValue()));
         colCover.setCellFactory(col -> new TableCell<>() {
             private final ImageView imageView = new ImageView();
