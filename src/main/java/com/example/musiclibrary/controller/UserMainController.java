@@ -2,8 +2,10 @@ package com.example.musiclibrary.controller;
 
 import com.example.musiclibrary.MusicLibraryApp;
 import com.example.musiclibrary.dao.CustomerDao;
+import com.example.musiclibrary.dao.OrderDao;
 import com.example.musiclibrary.dao.TrackDao;
 import com.example.musiclibrary.model.Customer;
+import com.example.musiclibrary.model.Order;
 import com.example.musiclibrary.model.OrderItem;
 import com.example.musiclibrary.model.Track;
 import com.example.musiclibrary.model.User;
@@ -15,9 +17,11 @@ import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.image.ImageView;
@@ -29,8 +33,14 @@ import javafx.stage.Stage;
 
 import java.math.BigDecimal;
 import java.sql.SQLException;
+import java.util.Random;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class UserMainController {
+
+    private static final Logger LOGGER = Logger.getLogger(UserMainController.class.getName());
+
     @FXML private Label welcomeLabel;
     @FXML private TextField searchField;
     @FXML private TableView<Track> trackTable;
@@ -45,6 +55,7 @@ public class UserMainController {
     private final ObservableList<Track> trackData = FXCollections.observableArrayList();
     private final ObservableList<OrderItem> cartItems = FXCollections.observableArrayList();
     private final CustomerDao customerDao = new CustomerDao();
+    private final OrderDao orderDao = new OrderDao();
     private final TrackDao trackDao = new TrackDao();
     private final OrderService orderService = new OrderService();
     private SpinnerValueFactory.IntegerSpinnerValueFactory quantitySpinnerFactory;
@@ -89,30 +100,21 @@ public class UserMainController {
         });
 
         colTitle.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().getTitle()));
-
         colTitle.setComparator((s1, s2) -> {
             if (s1 == null) return s2 == null ? 0 : -1;
             if (s2 == null) return 1;
-
-            // Split the strings into chunks of digits and non-digits
             String[] parts1 = s1.split("(?<=\\D)(?=\\d)|(?<=\\d)(?=\\D)");
             String[] parts2 = s2.split("(?<=\\D)(?=\\d)|(?<=\\d)(?=\\D)");
-
             for (int i = 0; i < Math.min(parts1.length, parts2.length); i++) {
-                String p1 = parts1[i];
-                String p2 = parts2[i];
-
-                // if both chunks are numbers, compare them mathematically
+                String p1 = parts1[i], p2 = parts2[i];
                 if (p1.matches("\\d+") && p2.matches("\\d+")) {
-                    int numCompare = Long.compare(Long.parseLong(p1), Long.parseLong(p2));
-                    if (numCompare != 0) return numCompare;
+                    int cmp = Long.compare(Long.parseLong(p1), Long.parseLong(p2));
+                    if (cmp != 0) return cmp;
                 } else {
-                    // compare them alphabetically
-                    int strCompare = p1.compareToIgnoreCase(p2);
-                    if (strCompare != 0) return strCompare;
+                    int cmp = p1.compareToIgnoreCase(p2);
+                    if (cmp != 0) return cmp;
                 }
             }
-            // if they are identical up to the length of the shorter string, the shorter one goes first
             return Integer.compare(parts1.length, parts2.length);
         });
 
@@ -167,31 +169,30 @@ public class UserMainController {
             saveButton.setOnAction(e -> {
                 String inputEmail = emailField.getText();
                 String inputPhone = phoneField.getText();
-                String errors = "";
+                StringBuilder errors = new StringBuilder();
 
-                if (inputEmail != null && !inputEmail.trim().isEmpty() && !inputEmail.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$")) {
-                    errors += "• Please use a valid email format (e.g., user@example.com).\n";
+                if (inputEmail != null && !inputEmail.trim().isEmpty()
+                        && !inputEmail.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$")) {
+                    errors.append("Invalid email format.\n");
+                }
+                if (inputPhone != null && !inputPhone.trim().isEmpty()
+                        && !inputPhone.matches("^[0-9+\\-() ]{6,20}$")) {
+                    errors.append("Invalid phone number format.\n");
+                }
+                if (errors.length() > 0) {
+                    showError(errors.toString().trim());
+                    return;
                 }
 
-                if (inputPhone != null && !inputPhone.trim().isEmpty()) {
-                    if (!inputPhone.matches("^[0-9+\\-() ]+$")) {
-                        errors += "• Phone numbers can only contain numbers, spaces, and + - ( )\n";
-                    } else if (inputPhone.replaceAll("[^0-9]", "").length() < 7) {
-                        errors += "• Your phone number needs at least 7 digits.\n";
-                    }
-                }
-
-                if (!errors.isEmpty()) { showError("Please fix the following:\n\n" + errors); return; }
-
+                customerToUpdate.setName(nameField.getText());
+                customerToUpdate.setEmail(inputEmail);
+                customerToUpdate.setPhone(inputPhone);
+                customerToUpdate.setCity(cityField.getText());
                 try {
-                    customerToUpdate.setName(nameField.getText());
-                    customerToUpdate.setEmail(inputEmail);
-                    customerToUpdate.setPhone(inputPhone);
-                    customerToUpdate.setCity(cityField.getText());
                     customerDao.update(customerToUpdate);
-                    showInfo("Profile updated successfully!");
                     dialog.close();
                 } catch (SQLException ex) {
+                    LOGGER.log(Level.SEVERE, "Failed to save profile", ex);
                     showError("Failed to save profile: " + ex.getMessage());
                 }
             });
@@ -201,11 +202,11 @@ public class UserMainController {
             HBox buttonBox = new HBox(15, saveButton, cancelButton);
             VBox mainLayout = new VBox(20, grid, buttonBox);
             mainLayout.setPadding(new Insets(20));
-
             dialog.setScene(new Scene(mainLayout, 400, 320));
             dialog.showAndWait();
 
         } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Failed to load profile details", e);
             showError("Failed to load profile details: " + e.getMessage());
         }
     }
@@ -214,8 +215,11 @@ public class UserMainController {
     private void handleSearch() {
         String keyword = searchField.getText();
         try {
-            trackData.setAll(keyword == null || keyword.isEmpty() ? trackDao.findAllActive() : trackDao.searchActiveByKeyword(keyword.trim()));
+            trackData.setAll(keyword == null || keyword.isEmpty()
+                    ? trackDao.findAllActive()
+                    : trackDao.searchActiveByKeyword(keyword.trim()));
         } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Search failed", e);
             showError("Failed to search tracks: " + e.getMessage());
         }
     }
@@ -227,6 +231,12 @@ public class UserMainController {
         if (sel.getStockQty() <= 0) { showError("Track is out of stock."); return; }
 
         int qty = quantitySpinner.getValue();
+
+        // Input validation: qty must be a positive integer
+        if (qty <= 0) {
+            showError("Please enter a positive integer for quantity.");
+            return;
+        }
         if (qty > sel.getStockQty()) { showError("Not enough stock."); return; }
 
         for (OrderItem item : cartItems) {
@@ -264,7 +274,10 @@ public class UserMainController {
             try {
                 Track t = trackDao.findById(d.getValue().getTrackId());
                 return new SimpleStringProperty(t != null ? t.getTitle() : "Unknown");
-            } catch (SQLException e) { return new SimpleStringProperty("Error"); }
+            } catch (SQLException e) {
+                LOGGER.log(Level.WARNING, "Failed to fetch track title", e);
+                return new SimpleStringProperty("Error");
+            }
         });
 
         TableColumn<OrderItem, Number> qtyCol = new TableColumn<>("Quantity");
@@ -278,32 +291,237 @@ public class UserMainController {
 
         cartTable.getColumns().addAll(titleCol, qtyCol, priceCol, totalCol);
 
+        // Calculate cart total
+        BigDecimal cartTotal = cartItems.stream()
+                .map(OrderItem::getLineTotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        Label totalLabel = new Label(String.format("Cart Total: RM %.2f", cartTotal));
+        totalLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
+
         Button removeBtn = new Button("Remove Selected");
         removeBtn.setOnAction(e -> {
             OrderItem sel = cartTable.getSelectionModel().getSelectedItem();
             if (sel != null) cartItems.remove(sel);
+            // Update total label
+            BigDecimal newTotal = cartItems.stream()
+                    .map(OrderItem::getLineTotal)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            totalLabel.setText(String.format("Cart Total: RM %.2f", newTotal));
         });
 
         Button clearBtn = new Button("Clear Cart");
         clearBtn.setOnAction(e -> { cartItems.clear(); dialog.close(); });
 
-        Button checkoutBtn = new Button("Checkout");
-        checkoutBtn.setOnAction(e -> {
-            try {
-                if (!SessionManager.isLoggedIn()) { showError("Must be logged in to checkout."); return; }
-                orderService.createOrder(resolveCustomerIdForCurrentUser(), SessionManager.getCurrentUser().getId(), cartItems, null);
-                cartItems.clear(); loadAllTracks(); dialog.close();
-                showInfo("Order placed successfully!");
-            } catch (SQLException | IllegalArgumentException ex) { showError("Checkout failed: " + ex.getMessage()); }
+        // --- PAYMENT BUTTON ---
+        Button payBtn = new Button("Proceed to Payment");
+        payBtn.setStyle("-fx-background-color: #2e7d32; -fx-text-fill: white; -fx-font-weight: bold;");
+        payBtn.setOnAction(e -> {
+            dialog.close();
+            showPaymentDialog(cartTotal);
         });
 
         Button closeBtn = new Button("Close");
         closeBtn.setOnAction(e -> dialog.close());
 
-        VBox layoutBox = new VBox(15, cartTable, new HBox(10, removeBtn, clearBtn, checkoutBtn, closeBtn));
+        VBox layoutBox = new VBox(12, cartTable, totalLabel,
+                new HBox(10, removeBtn, clearBtn, payBtn, closeBtn));
         layoutBox.setPadding(new Insets(15));
-        dialog.setScene(new Scene(layoutBox, 550, 400));
+        dialog.setScene(new Scene(layoutBox, 600, 430));
         dialog.showAndWait();
+    }
+
+    /**
+     * Simulated payment dialog.
+     * Collects mock card details, validates them, then simulates a success/failure callback.
+     */
+    private void showPaymentDialog(BigDecimal amount) {
+        Stage dialog = new Stage();
+        dialog.initModality(Modality.APPLICATION_MODAL);
+        dialog.setTitle("Secure Payment");
+
+        Label titleLabel = new Label("💳  Payment");
+        titleLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
+
+        Label amountLabel = new Label(String.format("Amount to Pay: RM %.2f", amount));
+        amountLabel.setStyle("-fx-font-size: 14px;");
+
+        GridPane grid = new GridPane();
+        grid.setHgap(12); grid.setVgap(12); grid.setPadding(new Insets(20));
+
+        TextField cardNumberField = new TextField();
+        cardNumberField.setPromptText("1234 5678 9012 3456");
+        cardNumberField.setPrefWidth(260);
+
+        // Only allow digits and spaces, max 19 chars (16 digits + 3 spaces)
+        cardNumberField.setTextFormatter(new TextFormatter<>(change -> {
+            String newText = change.getControlNewText().replaceAll("[^0-9 ]", "");
+            if (newText.length() > 19) return null;
+            change.setText(change.getText().replaceAll("[^0-9 ]", ""));
+            return change;
+        }));
+
+        TextField cardHolderField = new TextField();
+        cardHolderField.setPromptText("Full Name on Card");
+        cardHolderField.setPrefWidth(260);
+
+        TextField expiryField = new TextField();
+        expiryField.setPromptText("MM/YY");
+        expiryField.setPrefWidth(100);
+        expiryField.setTextFormatter(new TextFormatter<>(change -> {
+            String text = change.getControlNewText().replaceAll("[^0-9/]", "");
+            return text.length() <= 5 ? change : null;
+        }));
+
+        PasswordField cvvField = new PasswordField();
+        cvvField.setPromptText("CVV");
+        cvvField.setPrefWidth(80);
+        cvvField.setTextFormatter(new TextFormatter<>(change -> {
+            String text = change.getControlNewText().replaceAll("[^0-9]", "");
+            return text.length() <= 3 ? change : null;
+        }));
+
+        Label errorLabel = new Label("");
+        errorLabel.setStyle("-fx-text-fill: red;");
+
+        grid.add(new Label("Card Number:"), 0, 0); grid.add(cardNumberField, 1, 0);
+        grid.add(new Label("Card Holder:"), 0, 1); grid.add(cardHolderField, 1, 1);
+        grid.add(new Label("Expiry (MM/YY):"), 0, 2); grid.add(expiryField, 1, 2);
+        grid.add(new Label("CVV:"), 0, 3); grid.add(cvvField, 1, 3);
+        grid.add(errorLabel, 0, 4, 2, 1);
+
+        Button confirmPayBtn = new Button("Confirm Payment");
+        confirmPayBtn.setStyle("-fx-background-color: #1565c0; -fx-text-fill: white; -fx-font-weight: bold;");
+
+        Button cancelPayBtn = new Button("Cancel");
+
+        Label statusLabel = new Label("");
+        statusLabel.setStyle("-fx-font-style: italic;");
+
+        confirmPayBtn.setOnAction(e -> {
+            // --- Input Validation ---
+            String cardNumber = cardNumberField.getText().replaceAll(" ", "");
+            String cardHolder = cardHolderField.getText().trim();
+            String expiry = expiryField.getText().trim();
+            String cvv = cvvField.getText().trim();
+
+            if (cardNumber.length() != 16 || !cardNumber.matches("\\d{16}")) {
+                errorLabel.setText("Please enter a valid 16-digit card number.");
+                return;
+            }
+            if (cardHolder.isEmpty()) {
+                errorLabel.setText("Please enter the card holder name.");
+                return;
+            }
+            if (!expiry.matches("^(0[1-9]|1[0-2])/\\d{2}$")) {
+                errorLabel.setText("Please enter a valid expiry date (MM/YY).");
+                return;
+            }
+            if (cvv.length() != 3) {
+                errorLabel.setText("Please enter a valid 3-digit CVV.");
+                return;
+            }
+
+            // --- Loading state: prevent duplicate submissions ---
+            confirmPayBtn.setDisable(true);
+            cancelPayBtn.setDisable(true);
+            errorLabel.setText("");
+            statusLabel.setText("Processing payment... Please wait.");
+
+            // Simulate async payment gateway with a Task
+            Task<Boolean> paymentTask = new Task<>() {
+                @Override
+                protected Boolean call() throws Exception {
+                    Thread.sleep(2000); // Simulate network latency
+                    // Simulate ~85% success rate
+                    return new Random().nextInt(100) < 85;
+                }
+            };
+
+            paymentTask.setOnSucceeded(event -> {
+                boolean success = paymentTask.getValue();
+                statusLabel.setText("");
+
+                if (success) {
+                    // --- Success callback ---
+                    try {
+                        int customerId = resolveCustomerIdForCurrentUser();
+                        int userId = SessionManager.getCurrentUser().getId();
+                        Order newOrder = orderService.createOrder(customerId, userId, cartItems, null);
+                        newOrder.setStatus("PAID");
+                        orderDao.update(newOrder);
+                        cartItems.clear();
+                        loadAllTracks();
+                        dialog.close();
+                        showPaymentSuccess(newOrder.getId(), amount);
+                    } catch (Exception ex) {
+                        LOGGER.log(Level.SEVERE, "Order creation after payment failed", ex);
+                        confirmPayBtn.setDisable(false);
+                        cancelPayBtn.setDisable(false);
+                        errorLabel.setText("Payment succeeded but order creation failed: " + ex.getMessage());
+                    }
+                } else {
+                    // --- Failure callback ---
+                    LOGGER.warning("Simulated payment declined for card ending in " + cardNumber.substring(12));
+                    confirmPayBtn.setDisable(false);
+                    cancelPayBtn.setDisable(false);
+                    errorLabel.setText("Payment declined. Please check your card details and try again.");
+                }
+            });
+
+            paymentTask.setOnFailed(event -> {
+                Throwable ex = paymentTask.getException();
+                LOGGER.log(Level.SEVERE, "Payment processing error", ex);
+                confirmPayBtn.setDisable(false);
+                cancelPayBtn.setDisable(false);
+                statusLabel.setText("");
+                errorLabel.setText("Network error, please try again later.");
+            });
+
+            Thread paymentThread = new Thread(paymentTask);
+            paymentThread.setDaemon(true);
+            paymentThread.start();
+        });
+
+        cancelPayBtn.setOnAction(e -> dialog.close());
+
+        HBox buttons = new HBox(12, confirmPayBtn, cancelPayBtn);
+        buttons.setAlignment(Pos.CENTER);
+
+        VBox root = new VBox(14, titleLabel, amountLabel, grid, buttons, statusLabel);
+        root.setPadding(new Insets(24));
+        root.setAlignment(Pos.TOP_CENTER);
+
+        dialog.setScene(new Scene(root, 480, 370));
+        dialog.showAndWait();
+    }
+
+    /** Shown after a successful payment */
+    private void showPaymentSuccess(int orderId, BigDecimal amount) {
+        Stage confirm = new Stage();
+        confirm.initModality(Modality.APPLICATION_MODAL);
+        confirm.setTitle("Payment Successful");
+
+        Label icon = new Label("✅");
+        icon.setStyle("-fx-font-size: 48px;");
+
+        Label msg = new Label("Payment Successful!");
+        msg.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #2e7d32;");
+
+        Label orderInfo = new Label("Order #" + orderId + " has been placed.");
+        Label amountInfo = new Label(String.format("Amount Paid: RM %.2f", amount));
+        Label statusInfo = new Label("Status: PAID");
+        statusInfo.setStyle("-fx-text-fill: #2e7d32; -fx-font-weight: bold;");
+
+        Button okBtn = new Button("OK");
+        okBtn.setStyle("-fx-background-color: #2e7d32; -fx-text-fill: white;");
+        okBtn.setOnAction(e -> confirm.close());
+
+        VBox box = new VBox(14, icon, msg, orderInfo, amountInfo, statusInfo, okBtn);
+        box.setAlignment(Pos.CENTER);
+        box.setPadding(new Insets(30));
+
+        confirm.setScene(new Scene(box, 320, 280));
+        confirm.showAndWait();
     }
 
     @FXML
@@ -311,11 +529,16 @@ public class UserMainController {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/OrderManagementView.fxml"));
             Stage stage = new Stage();
-            stage.setTitle("My Order History"); stage.initModality(Modality.WINDOW_MODAL); stage.initOwner(trackTable.getScene().getWindow());
+            stage.setTitle("My Order History");
+            stage.initModality(Modality.WINDOW_MODAL);
+            stage.initOwner(trackTable.getScene().getWindow());
             stage.setScene(new Scene(loader.load(), 920, 640));
             stage.setMinWidth(820); stage.setMinHeight(560);
             stage.showAndWait();
-        } catch (Exception e) { showError("Failed to open orders: " + e.getMessage()); }
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Failed to open orders", e);
+            showError("Failed to open orders: " + e.getMessage());
+        }
     }
 
     @FXML
@@ -323,13 +546,18 @@ public class UserMainController {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/MusicPlayerView.fxml"));
             Stage stage = new Stage();
-            stage.setTitle("Music Player"); stage.initModality(Modality.WINDOW_MODAL); stage.initOwner(trackTable.getScene().getWindow());
+            stage.setTitle("Music Player");
+            stage.initModality(Modality.WINDOW_MODAL);
+            stage.initOwner(trackTable.getScene().getWindow());
             stage.setScene(new Scene(loader.load(), 600, 500));
             stage.setMinWidth(500); stage.setMinHeight(400);
             MusicPlayerController controller = loader.getController();
-            stage.setOnCloseRequest(e -> controller.dispose());
+            stage.setOnCloseRequest(ev -> controller.dispose());
             stage.showAndWait();
-        } catch (Exception e) { showError("Failed to open player: " + e.getMessage()); }
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Failed to open player", e);
+            showError("Failed to open player: " + e.getMessage());
+        }
     }
 
     @FXML
@@ -339,14 +567,24 @@ public class UserMainController {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/LoginView.fxml"));
             stage.setScene(new Scene(loader.load(), MusicLibraryApp.LOGIN_SCENE_WIDTH, MusicLibraryApp.LOGIN_SCENE_HEIGHT));
-            stage.setMinWidth(MusicLibraryApp.LOGIN_MIN_WIDTH); stage.setMinHeight(MusicLibraryApp.LOGIN_MIN_HEIGHT);
-            stage.setWidth(MusicLibraryApp.LOGIN_SCENE_WIDTH); stage.setHeight(MusicLibraryApp.LOGIN_SCENE_HEIGHT);
+            stage.setMinWidth(MusicLibraryApp.LOGIN_MIN_WIDTH);
+            stage.setMinHeight(MusicLibraryApp.LOGIN_MIN_HEIGHT);
+            stage.setWidth(MusicLibraryApp.LOGIN_SCENE_WIDTH);
+            stage.setHeight(MusicLibraryApp.LOGIN_SCENE_HEIGHT);
             stage.centerOnScreen();
-        } catch (Exception e) { showError("Logout failed: " + e.getMessage()); }
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Logout failed", e);
+            showError("Logout failed: " + e.getMessage());
+        }
     }
 
     private void loadAllTracks() {
-        try { trackData.setAll(trackDao.findAllActive()); } catch (SQLException e) { showError("Load failed: " + e.getMessage()); }
+        try {
+            trackData.setAll(trackDao.findAllActive());
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Load tracks failed", e);
+            showError("Load failed: " + e.getMessage());
+        }
     }
 
     private int resolveCustomerIdForCurrentUser() throws SQLException {
@@ -359,6 +597,13 @@ public class UserMainController {
         return id;
     }
 
-    private void showError(String msg) { new Alert(Alert.AlertType.ERROR, msg).showAndWait(); }
-    private void showInfo(String msg) { new Alert(Alert.AlertType.INFORMATION, msg).showAndWait(); }
+    private void showError(String msg) {
+        Alert alert = new Alert(Alert.AlertType.ERROR, msg);
+        alert.setHeaderText("Error");
+        alert.showAndWait();
+    }
+
+    private void showInfo(String msg) {
+        new Alert(Alert.AlertType.INFORMATION, msg).showAndWait();
+    }
 }
