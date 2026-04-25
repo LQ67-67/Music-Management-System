@@ -13,7 +13,7 @@ import java.util.List;
 public class CustomerDao {
     // find all customers
     public List<Customer> findAll() throws SQLException {
-        String sql = "SELECT id, name, email, phone, city FROM customers ORDER BY name";
+        String sql = "SELECT id, name, email, phone, city FROM customers ORDER BY name"; // find all customers ordered by name
         Connection conn = DBConnectionManager.getConnection();
         PreparedStatement ps = conn.prepareStatement(sql);
         ResultSet rs = ps.executeQuery();
@@ -37,7 +37,7 @@ public class CustomerDao {
 
     // create new customer
     public int create(Customer customer) throws SQLException {
-        String sql = "INSERT INTO customers (name, email, phone, city) VALUES (?, ?, ?, ?)";
+        String sql = "INSERT INTO customers (name, email, phone, city) VALUES (?, ?, ?, ?)"; // create new customer and return the generated ID when creating a new order for this customer
         Connection conn = DBConnectionManager.getConnection();
         PreparedStatement ps = conn.prepareStatement(sql, java.sql.Statement.RETURN_GENERATED_KEYS);
 
@@ -62,7 +62,7 @@ public class CustomerDao {
 
     // update existing customer
     public void update(Customer customer) throws SQLException {
-        String sql = "UPDATE customers SET name = ?, email = ?, phone = ?, city = ? WHERE id = ?";
+        String sql = "UPDATE customers SET name = ?, email = ?, phone = ?, city = ? WHERE id = ?"; // we can update all fields of a customer, but we cannot change the customer ID, so we use it in WHERE clause to identify which customer to update
         Connection conn = DBConnectionManager.getConnection();
         PreparedStatement ps = conn.prepareStatement(sql);
 
@@ -77,9 +77,9 @@ public class CustomerDao {
         conn.close();
     }
 
-    // Delete customer
+    // delete customer
     public void delete(int customerId) throws SQLException {
-        String sql = "DELETE FROM customers WHERE id = ?";
+        String sql = "DELETE FROM customers WHERE id = ?"; // delete a customer, corresponding orders will be deleted by cascade, and corresponding order items will also be deleted by cascade
         Connection conn = DBConnectionManager.getConnection();
         PreparedStatement ps = conn.prepareStatement(sql);
         ps.setInt(1, customerId);

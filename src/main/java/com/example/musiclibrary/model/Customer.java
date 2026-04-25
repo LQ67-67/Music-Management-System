@@ -47,4 +47,3 @@ public class Customer {
         this.city = city;
     }
 }
-

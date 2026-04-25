@@ -185,7 +185,7 @@ mvn test
 - JUnit 5 User Guide: https://junit.org/junit5/docs/current/user-guide/
 - Maven Documentation: https://maven.apache.org/guides/index.html
 - JPMS (Java Platform Module System) Guide: https://openjdk.org/projects/jigsaw/quick-start
-- Music Library: http://www.999ttt.com/l/qingyinyue/index.html
+- Music Library: http://www.999ttt.com/
 - Icons images: https://www.iconfont.cn/
 
 ## License

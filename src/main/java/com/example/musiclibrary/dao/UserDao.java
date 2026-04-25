@@ -10,14 +10,14 @@ import java.sql.SQLException;
 
 public class UserDao {
 
-    // Find user by username
+    // find user by username
     public User findByUsername(String username) throws SQLException {
-        String sql = "SELECT id, username, password_hash, role FROM users WHERE username = ?";
+        String sql = "SELECT id, username, password_hash, role FROM users WHERE username = ?"; // if password is already hashed before calling this method
         Connection conn = DBConnectionManager.getConnection();
         PreparedStatement ps = conn.prepareStatement(sql);
         ps.setString(1, username);
 
-        ResultSet rs = ps.executeQuery();
+        ResultSet rs = ps.executeQuery(); // execute the query and get the result set
         User user = null;
         if (rs.next()) {
             user = new User();
@@ -33,16 +33,15 @@ public class UserDao {
         return user;
     }
 
-    // Create new user
+    // create new user
     public int create(String username, String password, String role) throws SQLException {
-        String sql = "INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)";
+        String sql = "INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)"; // same with the previous one
         Connection conn = DBConnectionManager.getConnection();
         PreparedStatement ps = conn.prepareStatement(sql, java.sql.Statement.RETURN_GENERATED_KEYS);
 
         ps.setString(1, username);
         ps.setString(2, password);
         ps.setString(3, role);
-
         ps.executeUpdate();
 
         ResultSet rs = ps.getGeneratedKeys();

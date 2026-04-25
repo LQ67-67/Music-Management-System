@@ -10,11 +10,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class OrderDao {
-
-    // Insert new order
+    // insert new order
     public int insert(Order order) throws SQLException {
-        String sql = "INSERT INTO orders (customer_id, user_id, order_date, status, total_amount, shipping_city) " +
-                "VALUES (?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO orders (customer_id, user_id, order_date, status, total_amount, shipping_city) " + "VALUES (?, ?, ?, ?, ?, ?)"; // insert new order and return the generated order ID
         Connection conn = DBConnectionManager.getConnection();
         PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
 
@@ -39,9 +37,9 @@ public class OrderDao {
         return id;
     }
 
-    // Update existing order
+    // update existing order
     public void update(Order order) throws SQLException {
-        String sql = "UPDATE orders SET status = ?, total_amount = ?, shipping_city = ? WHERE id = ?";
+        String sql = "UPDATE orders SET status = ?, total_amount = ?, shipping_city = ? WHERE id = ?"; // create a new order and cancel old one if we want to change other fields
         Connection conn = DBConnectionManager.getConnection();
         PreparedStatement ps = conn.prepareStatement(sql);
 
@@ -55,9 +53,9 @@ public class OrderDao {
         conn.close();
     }
 
-    // Delete order
+    // delete order
     public void delete(int orderId) throws SQLException {
-        String sql = "DELETE FROM orders WHERE id = ?";
+        String sql = "DELETE FROM orders WHERE id = ?"; // corresponding order items will be deleted by cascade
         Connection conn = DBConnectionManager.getConnection();
         PreparedStatement ps = conn.prepareStatement(sql);
         ps.setInt(1, orderId);
@@ -68,8 +66,7 @@ public class OrderDao {
 
     // Find orders by user ID
     public List<Order> findByUser(int userId) throws SQLException {
-        String sql = "SELECT id, customer_id, user_id, order_date, status, total_amount, shipping_city " +
-                "FROM orders WHERE user_id = ? ORDER BY order_date DESC";
+        String sql = "SELECT id, customer_id, user_id, order_date, status, total_amount, shipping_city " + "FROM orders WHERE user_id = ? ORDER BY order_date DESC"; // find orders by user ID and sort by order date in descending order
         Connection conn = DBConnectionManager.getConnection();
         PreparedStatement ps = conn.prepareStatement(sql);
         ps.setInt(1, userId);
@@ -100,10 +97,9 @@ public class OrderDao {
         return list;
     }
 
-    // Find order by ID
+    // find order
     public Order findById(int orderId) throws SQLException {
-        String sql = "SELECT id, customer_id, user_id, order_date, status, total_amount, shipping_city " +
-                "FROM orders WHERE id = ?";
+        String sql = "SELECT id, customer_id, user_id, order_date, status, total_amount, shipping_city " + "FROM orders WHERE id = ?"; // find order by ID
         Connection conn = DBConnectionManager.getConnection();
         PreparedStatement ps = conn.prepareStatement(sql);
         ps.setInt(1, orderId);

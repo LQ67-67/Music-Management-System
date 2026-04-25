@@ -8,11 +8,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class OrderItemDao {
-
-    // Insert multiple order items at once
+    // insert multiple order items at once
     public void insertBatch(List<OrderItem> items) throws SQLException {
-        String sql = "INSERT INTO order_items (order_id, track_id, quantity, unit_price, line_total) " +
-                "VALUES (?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO order_items (order_id, track_id, quantity, unit_price, line_total) " + "VALUES (?, ?, ?, ?, ?)"; // insert order items in batch
         Connection conn = DBConnectionManager.getConnection();
         PreparedStatement ps = conn.prepareStatement(sql);
 
@@ -30,10 +28,9 @@ public class OrderItemDao {
         conn.close();
     }
 
-    // Find order items by order ID
+    // find order items
     public List<OrderItem> findByOrder(int orderId) throws SQLException {
-        String sql = "SELECT id, order_id, track_id, quantity, unit_price, line_total " +
-                "FROM order_items WHERE order_id = ?";
+        String sql = "SELECT id, order_id, track_id, quantity, unit_price, line_total " + "FROM order_items WHERE order_id = ?"; // find order items by order ID
         Connection conn = DBConnectionManager.getConnection();
         PreparedStatement ps = conn.prepareStatement(sql);
         ps.setInt(1, orderId);
@@ -58,9 +55,9 @@ public class OrderItemDao {
         return list;
     }
 
-    // Delete order items by order ID
+    // delete order items
     public void deleteByOrder(int orderId) throws SQLException {
-        String sql = "DELETE FROM order_items WHERE order_id = ?";
+        String sql = "DELETE FROM order_items WHERE order_id = ?"; // delete order items by order ID, used when canceling an order or deleting an order
         Connection conn = DBConnectionManager.getConnection();
         PreparedStatement ps = conn.prepareStatement(sql);
         ps.setInt(1, orderId);

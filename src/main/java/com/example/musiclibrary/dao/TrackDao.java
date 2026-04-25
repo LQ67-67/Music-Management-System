@@ -11,15 +11,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class TrackDao {
-
-    // Find all active tracks from database
+    // find all active tracks from database
     public List<Track> findAllActive() throws SQLException {
         String sql = "SELECT id, title, artist, album, genre, price, stock_qty, is_active FROM tracks WHERE is_active = 1";
         Connection conn = DBConnectionManager.getConnection();
         PreparedStatement ps = conn.prepareStatement(sql);
         ResultSet rs = ps.executeQuery();
 
-        List<Track> list = new ArrayList<>();
+        List<Track> list = new ArrayList<>(); // store the tracks
         while (rs.next()) {
             Track t = new Track();
             t.setId(rs.getInt("id"));
@@ -39,10 +38,9 @@ public class TrackDao {
         return list;
     }
 
-    // Search active tracks by keyword
+    // find active tracks by keyword
     public List<Track> searchActiveByKeyword(String keyword) throws SQLException {
-        String sql = "SELECT id, title, artist, album, genre, price, stock_qty, is_active " +
-                "FROM tracks WHERE is_active = 1 AND (title LIKE ? OR artist LIKE ?)";
+        String sql = "SELECT id, title, artist, album, genre, price, stock_qty, is_active " + "FROM tracks WHERE is_active = 1 AND (title LIKE ? OR artist LIKE ?)"; // search by title or artist
         Connection conn = DBConnectionManager.getConnection();
         PreparedStatement ps = conn.prepareStatement(sql);
 
@@ -72,9 +70,9 @@ public class TrackDao {
         return list;
     }
 
-    // Find track by ID
+    // find track by ID
     public Track findById(int id) throws SQLException {
-        String sql = "SELECT id, title, artist, album, genre, price, stock_qty, is_active FROM tracks WHERE id = ?";
+        String sql = "SELECT id, title, artist, album, genre, price, stock_qty, is_active FROM tracks WHERE id = ?"; // we can find both active and inactive tracks by ID, because we may want to edit or delete an inactive track, so we don't filter by is_active here
         Connection conn = DBConnectionManager.getConnection();
         PreparedStatement ps = conn.prepareStatement(sql);
         ps.setInt(1, id);
@@ -99,9 +97,9 @@ public class TrackDao {
         return t;
     }
 
-    // Update track stock quantity
+    // update track stock quantity
     public void updateStock(int trackId, int newStock) throws SQLException {
-        String sql = "UPDATE tracks SET stock_qty = ? WHERE id = ?";
+        String sql = "UPDATE tracks SET stock_qty = ? WHERE id = ?"; // we can update stock for both active and inactive tracks, because we may want to restock an inactive track before making it active again
         Connection conn = DBConnectionManager.getConnection();
         PreparedStatement ps = conn.prepareStatement(sql);
         ps.setInt(1, newStock);
@@ -113,7 +111,7 @@ public class TrackDao {
 
     // Create new track
     public int create(Track track) throws SQLException {
-        String sql = "INSERT INTO tracks (title, artist, album, genre, price, stock_qty, is_active) VALUES (?, ?, ?, ?, ?, ?, 1)";
+        String sql = "INSERT INTO tracks (title, artist, album, genre, price, stock_qty, is_active) VALUES (?, ?, ?, ?, ?, ?, 1)"; // if we want to create an inactive track, we can create it first and update it to set is_active to 0
         Connection conn = DBConnectionManager.getConnection();
         PreparedStatement ps = conn.prepareStatement(sql, java.sql.Statement.RETURN_GENERATED_KEYS);
 
@@ -140,7 +138,7 @@ public class TrackDao {
 
     // Update existing track
     public void update(Track track) throws SQLException {
-        String sql = "UPDATE tracks SET title = ?, artist = ?, album = ?, genre = ?, price = ?, stock_qty = ? WHERE id = ?";
+        String sql = "UPDATE tracks SET title = ?, artist = ?, album = ?, genre = ?, price = ?, stock_qty = ? WHERE id = ?"; // update an active track without changing its active status, or update an inactive track before making it active again
         Connection conn = DBConnectionManager.getConnection();
         PreparedStatement ps = conn.prepareStatement(sql);
 
@@ -157,9 +155,9 @@ public class TrackDao {
         conn.close();
     }
 
-    // Delete track (set is_active to 0)
+    // delete track
     public void delete(int trackId) throws SQLException {
-        String sql = "UPDATE tracks SET is_active = 0 WHERE id = ?";
+        String sql = "UPDATE tracks SET is_active = 0 WHERE id = ?"; // set is_active to 0
         Connection conn = DBConnectionManager.getConnection();
         PreparedStatement ps = conn.prepareStatement(sql);
         ps.setInt(1, trackId);

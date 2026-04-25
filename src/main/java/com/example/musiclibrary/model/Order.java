@@ -68,4 +68,3 @@ public class Order {
         this.shippingCity = shippingCity;
     }
 }
-
