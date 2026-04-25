@@ -72,8 +72,7 @@ test1/
 
 - Login verifies username and password, and error message is prompted when failed. 
 - New users can be registered (default role 'USER'). 
-- After successful login, enter different homepages according to your role. 
-- Current account information is stored in the session and can be accessed globally.
+- After successful login, enter different homepages according to your role.
 ---
 #### Admin:
 - account: 'admin'
@@ -97,12 +96,12 @@ test1/
 
 - **Tracks**: Add/edit/soft-delete tracks, support uploading cover and audio assets. 
 - **Customers**: Add, delete, modify, and check customer information. 
-- Orders: View the full order and edit the status and modify the delivery city. 
+- **Orders**: View the full order and edit the status and modify the delivery city. 
 - **Reports**： 
   - Summary overview (number of active tracks, number of customers, number of orders, total sales)
   - Sales by Genre / City / Date Statistics
   - Pie chart visualization + metric statistics (avg/sum/max/min)
-- Data Export: Supports exporting multiple modules as '.txt'. 
+- **Data Export**: Supports exporting multiple modules as '.txt'. 
 
 ## Get started quickly
 
@@ -139,8 +138,8 @@ Please change the account password according to the native MySQL configuration.
 mvn clean javafx:run
 ```
 
-It is also possible to run the configuration using the in-repository JetBrains: '.run/Music Library (Maven).run.xml'. 
-Or run the main class 'MusicLibraryApp.java' directly.
+- It is also possible to run the configuration using the in-repository JetBrains: '.run/Music Library (Maven).run.xml'. 
+- Or run the main class 'MusicLibraryApp.java' directly.
 
 ## Default test account
 
@@ -177,7 +176,6 @@ mvn test
 
 ## Known Limitations (Recommended)
 
-- Plaintext passwords are not recommended in production environments and should be hashed and salted (such as BCrypt). 
 - The current DB configuration is written dead in code, so it is recommended to change it to an environment variable or configuration file. 
 - Upload resources directly to 'src/main/resources', which is more suitable for development environments. If you need to publish, it is recommended to have a separate external storage directory. 
 
