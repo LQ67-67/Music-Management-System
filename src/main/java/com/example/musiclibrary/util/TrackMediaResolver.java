@@ -17,7 +17,7 @@ public final class TrackMediaResolver {
 
     private static final String MUSIC_RESOURCE_DIR = "musics";
     private static final String TRACK_IMAGE_RESOURCE_DIR = "images/tracks";
-    private static final String DEFAULT_IMAGE_RESOURCE = "/images/music.png";
+    private static final String DEFAULT_IMAGE_RESOURCE = "/images/music.jpeg";
     private static final List<String> AUDIO_EXTENSIONS = Arrays.asList(".mp3", ".wav", ".aac", ".m4a");
     private static final List<String> IMAGE_EXTENSIONS = Arrays.asList(".jpg", ".jpeg", ".png", ".gif", ".bmp");
 
