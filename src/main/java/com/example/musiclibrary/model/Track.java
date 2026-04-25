@@ -12,8 +12,6 @@ public class Track {
     private int stockQty;
     private boolean active;
 
-    // ...existing getters and setters for id, title, artist, album, genre, price, stockQty, active...
-
     public int getId() {
         return id;
     }

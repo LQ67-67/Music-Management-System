@@ -85,19 +85,22 @@ public class AdminMainController {
     // track tab
     private VBox buildTracksTabContent() {
         TableView<Track> trackTable = new TableView<>(trackData);
-        trackTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
+        trackTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN); // let the last column take up remaining space
 
         TableColumn<Track, Track> imageCol = new TableColumn<>("Image");
         imageCol.setPrefWidth(110);
-        imageCol.setCellValueFactory(param -> new SimpleObjectProperty<>(param.getValue()));
+        imageCol.setCellValueFactory(param -> new SimpleObjectProperty<>(param.getValue())); // pass the whole Track object to the cell factory so we can load the image based on track ID and filename
         imageCol.setCellFactory(param -> new TableCell<>() {
             private final ImageView imageView = new ImageView();
             @Override
             protected void updateItem(Track item, boolean empty) {
                 super.updateItem(item, empty);
-                if (empty || item == null) { setGraphic(null); return; }
+                if (empty || item == null) {
+                    setGraphic(null);
+                    return;
+                }
                 imageView.setFitWidth(80); imageView.setFitHeight(80); imageView.setPreserveRatio(true);
-                imageView.setImage(TrackMediaResolver.loadTrackImage(item, item.getId() + ".mp3"));
+                imageView.setImage(TrackMediaResolver.loadTrackImage(item, item.getId() + ".mp3")); // load image based on track ID and common audio extension
                 setGraphic(imageView);
             }
         });
@@ -117,7 +120,7 @@ public class AdminMainController {
         TableColumn<Track, String> priceCol = new TableColumn<>("Price");
         priceCol.setCellValueFactory(p -> {
             BigDecimal price = p.getValue().getPrice();
-            return new SimpleStringProperty(price == null ? "" : price.toPlainString());
+            return new SimpleStringProperty(price == null ? "" : price.toPlainString()); // show empty string if price is null, otherwise show the price as a string without scientific notation
         });
 
         TableColumn<Track, String> stockCol = new TableColumn<>("Stock");
@@ -131,15 +134,21 @@ public class AdminMainController {
         Button editBtn = new Button("Edit Track");
         editBtn.setOnAction(e -> {
             Track sel = trackTable.getSelectionModel().getSelectedItem();
-            if (sel != null) showTrackDialog(sel);
-            else showError("Please select a track from the table to edit.");
+            if (sel != null){
+                showTrackDialog(sel); // pass the selected track to the dialog so it can pre-fill the fields and know whether to create or update
+            } else{
+                showError("Please select a track from the table to edit.");
+            }
         });
 
         Button deleteBtn = new Button("Delete Track");
         deleteBtn.setOnAction(e -> {
             Track sel = trackTable.getSelectionModel().getSelectedItem();
-            if (sel != null) deleteTrack(sel);
-            else showError("Please select a track from the table to delete.");
+            if (sel != null){
+                deleteTrack(sel);
+            } else{
+                showError("Please select a track from the table to delete.");
+            }
         });
 
         Button exportBtn = new Button("Export Track List (txt)");
@@ -160,7 +169,7 @@ public class AdminMainController {
 
     private void loadTracks() {
         try {
-            trackData.setAll(trackDao.findAllActive());
+            trackData.setAll(trackDao.findAllActive()); // only load active tracks for management
         } catch (SQLException e) {
             LOGGER.log(Level.SEVERE, "Failed to load tracks", e);
             showError("Failed to load tracks from database: " + e.getMessage());
@@ -191,7 +200,7 @@ public class AdminMainController {
         browseImageBtn.setOnAction(e -> {
             FileChooser fc = new FileChooser();
             fc.setTitle("Select Cover Art");
-            fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("Image Files", "*.png", "*.jpg", "*.jpeg", "*.gif", "*.bmp", "*.webp"));
+            fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("Image Files", "*.png", "*.jpg", "*.jpeg", "*.gif", "*.bmp", "*.webp")); // image formats
             File chosen = fc.showOpenDialog(dialog);
             if (chosen != null) {
                 selectedImageFile[0] = chosen;
@@ -208,8 +217,7 @@ public class AdminMainController {
         HBox imageRow = new HBox(8, browseImageBtn, imagePathLabel, previewImageView);
         imageRow.setAlignment(Pos.CENTER_LEFT);
 
-        // audio picker
-        Label audioPathLabel = new Label("No audio selected");
+        Label audioPathLabel = new Label("No audio selected"); // audio picker
         audioPathLabel.setStyle("-fx-text-fill: grey;");
 
         final File[] selectedAudioFile = {null};
@@ -217,7 +225,7 @@ public class AdminMainController {
         browseAudioBtn.setOnAction(e -> {
             FileChooser fc = new FileChooser();
             fc.setTitle("Select Audio File");
-            fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("Audio Files", "*.mp3", "*.wav", "*.aac", "*.flac", "*.ogg", "*.m4a"));
+            fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("Audio Files", "*.mp3", "*.wav", "*.aac", "*.flac", "*.ogg", "*.m4a")); // music formats
             File chosen = fc.showOpenDialog(dialog);
             if (chosen != null) {
                 selectedAudioFile[0] = chosen;
@@ -229,9 +237,8 @@ public class AdminMainController {
         HBox audioRow = new HBox(8, browseAudioBtn, audioPathLabel);
         audioRow.setAlignment(Pos.CENTER_LEFT);
 
-        // form layout
         GridPane grid = new GridPane();
-        grid.setHgap(10); grid.setVgap(10); grid.setPadding(new Insets(20));
+        grid.setHgap(10); grid.setVgap(10); grid.setPadding(new Insets(20)); // form layout
 
         grid.add(new Label("Title:"), 0, 0);  grid.add(titleField, 1, 0);
         grid.add(new Label("Artist:"), 0, 1); grid.add(artistField, 1, 1);
@@ -262,7 +269,7 @@ public class AdminMainController {
             try {
                 price = new BigDecimal(priceStr);
                 if (price.compareTo(BigDecimal.ZERO) <= 0) {
-                    validationLabel.setText("Price must be a number greater than 0.");
+                    validationLabel.setText("Price must be a number greater than 0."); // price must be greater than 0
                     return;
                 }
             } catch (NumberFormatException ex) {
@@ -274,7 +281,7 @@ public class AdminMainController {
             try {
                 stock = Integer.parseInt(stockStr);
                 if (stock <= 0) {
-                    validationLabel.setText("Stock must be a positive integer.");
+                    validationLabel.setText("Stock must be a positive integer."); // same with stock
                     return;
                 }
             } catch (NumberFormatException ex) {
@@ -288,7 +295,7 @@ public class AdminMainController {
                 if (track != null) t.setId(track.getId());
                 t.setTitle(titleVal);
                 t.setArtist(artistVal);
-                t.setAlbum(albumField.getText().trim());
+                t.setAlbum(albumField.getText().trim()); // trim is optional for album and genre since they can be empty, but we still want to remove extra spaces if user entered something
                 t.setGenre(genreField.getText().trim());
                 t.setPrice(price);
                 t.setStockQty(stock);
@@ -301,16 +308,13 @@ public class AdminMainController {
                     savedId = track.getId();
                 }
 
-                // Copy image file to resources/images/tracks/<id>.ext
                 if (selectedImageFile[0] != null) {
-                    copyFileToResources(selectedImageFile[0], IMAGE_DIR, savedId + getExtension(selectedImageFile[0]));
+                    copyFileToResources(selectedImageFile[0], IMAGE_DIR, savedId + getExtension(selectedImageFile[0])); // copy image file to resources/images/tracks/<id>.ext
                 }
-                // Copy audio file to resources/audio/<id>.ext
                 if (selectedAudioFile[0] != null) {
-                    copyFileToResources(selectedAudioFile[0], AUDIO_DIR, savedId + getExtension(selectedAudioFile[0]));
+                    copyFileToResources(selectedAudioFile[0], AUDIO_DIR, savedId + getExtension(selectedAudioFile[0])); // Copy audio file to resources/audio/<id>.ext
                 }
-
-                loadTracks();
+                loadTracks(); // refresh the track list after saving
                 dialog.close();
 
             } catch (Exception ex) {
@@ -334,7 +338,7 @@ public class AdminMainController {
         dialog.showAndWait();
     }
 
-    // copy a file into a resource directory, creating it if needed.
+    // copy file into a resource directory, creating it if needed.
     private void copyFileToResources(File source, String destDir, String destFilename) throws IOException {
         File dir = new File(destDir);
         if (!dir.exists()) dir.mkdirs();
@@ -381,34 +385,39 @@ public class AdminMainController {
         Button editBtn = new Button("Edit Customer");
         editBtn.setOnAction(e -> {
             Customer sel = customerTable.getSelectionModel().getSelectedItem();
-            if (sel != null) showCustomerDialog(sel);
-            else showError("Please select a customer to edit.");
+            if (sel != null){
+                showCustomerDialog(sel);
+            } else {
+                showError("Please select a customer to edit.");
+            }
         });
 
         Button deleteBtn = new Button("Delete Customer");
         deleteBtn.setOnAction(e -> {
             Customer sel = customerTable.getSelectionModel().getSelectedItem();
-            if (sel != null) deleteCustomer(sel);
-            else showError("Please select a customer to delete.");
+            if (sel != null){
+                deleteCustomer(sel);
+            } else{
+                showError("Please select a customer to delete.");
+            }
         });
 
         Button exportBtn = new Button("Export Customer List (txt)");
         exportBtn.setOnAction(e -> exportTableToTxt("Customers", new String[]{"ID", "Name", "Email", "Phone", "City"},
                 customerData.stream().map(c -> new String[]{
-                        String.valueOf(c.getId()), c.getName(),
-                        c.getEmail(), c.getPhone(), c.getCity()
-                }).collect(java.util.stream.Collectors.toList())));
+                        String.valueOf(c.getId()), c.getName(), c.getEmail(), c.getPhone(), c.getCity()
+                }).collect(java.util.stream.Collectors.toList()))); // export customer list to txt file with ID, name, email, phone and city columns
 
         HBox buttonBox = new HBox(10, addBtn, editBtn, deleteBtn, exportBtn);
         VBox mainBox = new VBox(10, new Label("Customer List"), customerTable, buttonBox);
-        mainBox.setPadding(new Insets(12));
+        mainBox.setPadding(new Insets(12)); // add some padding around the edges
         VBox.setVgrow(customerTable, Priority.ALWAYS);
         return mainBox;
     }
 
     private void loadCustomers() {
         try {
-            customerData.setAll(customerDao.findAll());
+            customerData.setAll(customerDao.findAll()); // load all customers for management(even those without orders
         } catch (SQLException e) {
             LOGGER.log(Level.SEVERE, "Failed to load customers", e);
             showError("Failed to load customers: " + e.getMessage());
@@ -441,12 +450,17 @@ public class AdminMainController {
             String emailVal = emailField.getText().trim();
             String phoneVal = phoneField.getText().trim();
 
-            if (nameVal.isEmpty()) { validationLabel.setText("Name is required."); return; }
-            if (!emailVal.isEmpty() && !emailVal.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$")) {
-                validationLabel.setText("Invalid email format."); return;
+            if (nameVal.isEmpty()) {
+                validationLabel.setText("Name is required.");
+                return;
             }
-            if (!phoneVal.isEmpty() && !phoneVal.matches("^[0-9+\\-() ]{6,20}$")) {
-                validationLabel.setText("Invalid phone number format."); return;
+            if (!emailVal.isEmpty() && !emailVal.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$")) { // email format validation
+                validationLabel.setText("Invalid email format.");
+                return;
+            }
+            if (!phoneVal.isEmpty() && !phoneVal.matches("^[0-9+\\-() ]{6,20}$")) { // allow digits, spaces, parentheses, plus and hyphens, with length between 6 and 20 characters
+                validationLabel.setText("Invalid phone number format.");
+                return;
             }
 
             try {
@@ -475,7 +489,7 @@ public class AdminMainController {
 
     private void deleteCustomer(Customer customer) {
         try {
-            customerDao.delete(customer.getId());
+            customerDao.delete(customer.getId()); // deleting a customer will also delete all their orders in database
             loadCustomers();
         } catch (SQLException e) {
             LOGGER.log(Level.SEVERE, "Failed to delete customer", e);
@@ -486,10 +500,10 @@ public class AdminMainController {
     // orders tab
     private VBox buildOrdersTabContent() {
         TableView<String[]> orderTable = new TableView<>(orderData);
-        orderTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
+        orderTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN); // let the last column take up remaining space
 
         String[] headers = {"Order ID", "Username", "Customer Name", "Order Date", "Status", "Total", "Shipping City"};
-        for (int i = 0; i < headers.length; i++) {
+        for (int i = 0; i < headers.length; i++) { // use loop to create columns based on the headers array
             final int idx = i;
             TableColumn<String[], String> col = new TableColumn<>(headers[i]);
             col.setCellValueFactory(p -> new SimpleStringProperty(p.getValue()[idx]));
@@ -499,14 +513,15 @@ public class AdminMainController {
         Button editBtn = new Button("Edit Order");
         editBtn.setOnAction(e -> {
             String[] row = orderTable.getSelectionModel().getSelectedItem();
-            if (row != null) showOrderEditDialog(row);
-            else showError("Please select an order to edit.");
+            if (row != null){
+                showOrderEditDialog(row);
+            } else {
+                showError("Please select an order to edit.");
+            }
         });
 
         Button exportBtn = new Button("Export Order List (txt)");
-        exportBtn.setOnAction(e -> exportTableToTxt("Orders",
-                new String[]{"Order ID", "Username", "Customer", "Date", "Status", "Total", "City"},
-                new ArrayList<>(orderData)));
+        exportBtn.setOnAction(e -> exportTableToTxt("Orders", new String[]{"Order ID", "Username", "Customer", "Date", "Status", "Total", "City"}, new ArrayList<>(orderData))); // export order list to txt
 
         HBox buttonBox = new HBox(10, editBtn, exportBtn);
         VBox mainBox = new VBox(10, new Label("All Orders"), orderTable, buttonBox);
@@ -536,8 +551,11 @@ public class AdminMainController {
 
         Button saveBtn = new Button("Save");
         saveBtn.setOnAction(e -> {
-            if (statusBox.getValue() == null) { validationLabel.setText("Please select a status."); return; }
-            String sql = "UPDATE orders SET status = ?, shipping_city = ? WHERE id = ?";
+            if (statusBox.getValue() == null) {
+                validationLabel.setText("Please select a status.");  //  check if status is null before saving
+                return;
+            }
+            String sql = "UPDATE orders SET status = ?, shipping_city = ? WHERE id = ?"; // only allow editing of status and shipping city
             try (Connection conn = DBConnectionManager.getConnection();
                  PreparedStatement ps = conn.prepareStatement(sql)) {
                 ps.setString(1, statusBox.getValue());
@@ -566,7 +584,7 @@ public class AdminMainController {
     private void loadOrders() {
         String sql = "SELECT o.id, u.username, c.name, o.order_date, o.status, o.total_amount, o.shipping_city "
                 + "FROM orders o JOIN users u ON o.user_id = u.id JOIN customers c ON o.customer_id = c.id "
-                + "ORDER BY o.order_date DESC";
+                + "ORDER BY o.order_date DESC"; // load all orders with user and customer info for display in orders management tab, sorted by most recent order date first
         try (Connection conn = DBConnectionManager.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
@@ -613,10 +631,7 @@ public class AdminMainController {
         reportType.getItems().addAll("Summary", "Sales by Genre", "Sales by City", "Sales by Date");
         reportType.setValue("Summary");
 
-        reportsTab.setUserData(new Object[]{
-                activeTracksLabel, customerCountLabel, orderCountLabel, totalSalesLabel,
-                reportTable, avgLabel, sumLabel, maxLabel, minLabel, pieCanvas
-        });
+        reportsTab.setUserData(new Object[]{activeTracksLabel, customerCountLabel, orderCountLabel, totalSalesLabel, reportTable, avgLabel, sumLabel, maxLabel, minLabel, pieCanvas});
 
         Button refreshBtn = new Button("Refresh Reports");
         refreshBtn.setOnAction(e -> refreshReport(reportType.getValue()));
@@ -634,7 +649,7 @@ public class AdminMainController {
         // left Column (2/3 Width)
         VBox leftColumn = new VBox(15);
         leftColumn.setPadding(new Insets(10));
-        HBox.setHgrow(leftColumn, Priority.ALWAYS); // Allow the left column to take up remaining flexible space
+        HBox.setHgrow(leftColumn, Priority.ALWAYS); // allow the left column to take up remaining flexible space
 
         // top Left: dropdown menu
         HBox controlsBox = new HBox(10, new Label("Select Report:"), reportType);
@@ -651,7 +666,6 @@ public class AdminMainController {
         VBox.setVgrow(tableCard, Priority.ALWAYS);
 
         leftColumn.getChildren().addAll(controlsBox, chartCard, tableCard);
-
 
         // right Column (1/3 Width)
         VBox rightColumn = new VBox(20);
@@ -671,9 +685,7 @@ public class AdminMainController {
         summaryCard.setStyle("-fx-background-color: #f8f9fa; -fx-border-color: #e0e0e0; -fx-border-radius: 5; -fx-padding: 15;");
 
         // middle right: statistics card
-        VBox statsCard = new VBox(12,
-                new Label("📈 Statistics"), new Separator(), avgLabel, sumLabel, maxLabel, minLabel
-        );
+        VBox statsCard = new VBox(12, new Label("📈 Statistics"), new Separator(), avgLabel, sumLabel, maxLabel, minLabel);
         statsCard.setStyle("-fx-background-color: #f8f9fa; -fx-border-color: #e0e0e0; -fx-border-radius: 5; -fx-padding: 15;");
 
         // bottom right: action buttons
@@ -681,7 +693,6 @@ public class AdminMainController {
         actionCard.setAlignment(Pos.CENTER_LEFT);
 
         rightColumn.getChildren().addAll(summaryCard, statsCard, actionCard);
-
 
         // assemble the main container
         HBox mainSplitContent = new HBox(15, leftColumn, rightColumn);
@@ -695,16 +706,17 @@ public class AdminMainController {
 
     private void refreshReport(String reportType) {
         Object[] data = (Object[]) reportsTab.getUserData();
-        if (data == null || data.length < 10) return;
+        if (data == null || data.length < 10){
+            return;
+        }
 
-        Label activeTracksLabel  = (Label) data[0];
+        Label activeTracksLabel = (Label) data[0];
         Label customerCountLabel = (Label) data[1];
         Label orderCountLabel = (Label) data[2];
         Label totalSalesLabel = (Label) data[3];
         @SuppressWarnings("unchecked")
         TableView<String> reportTable = (TableView<String>) data[4];
-        Label avgLabel = (Label) data[5], sumLabel = (Label) data[6],
-                maxLabel = (Label) data[7], minLabel = (Label) data[8];
+        Label avgLabel = (Label) data[5], sumLabel = (Label) data[6], maxLabel = (Label) data[7], minLabel = (Label) data[8];
         Canvas pieCanvas = (Canvas) data[9];
 
         String summarySql = "SELECT "
@@ -736,9 +748,7 @@ public class AdminMainController {
             Color.web("#b07aa1"), Color.web("#ff9da7"), Color.web("#9c755f")
     };
 
-    private void loadSalesReport(String reportType, TableView<String> reportTable,
-                                 Label avgLabel, Label sumLabel, Label maxLabel, Label minLabel,
-                                 Canvas pieCanvas) {
+    private void loadSalesReport(String reportType, TableView<String> reportTable, Label avgLabel, Label sumLabel, Label maxLabel, Label minLabel, Canvas pieCanvas) {
         String sql;
         switch (reportType) {
             case "Sales by Genre":
@@ -757,7 +767,7 @@ public class AdminMainController {
                 return;
         }
 
-        try (Connection conn = DBConnectionManager.getConnection();
+        try (Connection conn = DBConnectionManager.getConnection(); // ensure proper resource management
              PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
 
@@ -782,10 +792,11 @@ public class AdminMainController {
 
             reportTable.getColumns().clear();
             TableColumn<String, String> resultCol = new TableColumn<>("Result");
-            resultCol.setCellValueFactory(p -> new SimpleStringProperty(p.getValue()));
+            resultCol.setCellValueFactory(p -> new SimpleStringProperty(p.getValue())); // single column with the formatted string result
             reportTable.getColumns().add(resultCol);
             reportTable.setItems(rows);
 
+            // counting the basic data that we want
             if (count > 0) {
                 avgLabel.setText(String.format("Average: %.2f", sum / count));
                 sumLabel.setText(String.format("Total: %.2f", sum));
@@ -793,7 +804,7 @@ public class AdminMainController {
                 minLabel.setText(String.format("Minimum: %.2f", min));
                 drawPieChart(pieCanvas, labels, values, reportType);
             } else {
-                avgLabel.setText(""); sumLabel.setText(""); maxLabel.setText(""); minLabel.setText("");
+                avgLabel.setText(""); sumLabel.setText(""); maxLabel.setText(""); minLabel.setText(""); // if no data, clear the stats labels and the pie chart
                 clearPieCanvas(pieCanvas);
             }
 
@@ -870,10 +881,14 @@ public class AdminMainController {
 
             // compute column widths based on display length
             int[] widths = new int[headers.length];
-            for (int i = 0; i < headers.length; i++) widths[i] = getDisplayWidth(headers[i]);
+            for (int i = 0; i < headers.length; i++){
+                widths[i] = getDisplayWidth(headers[i]);
+            }
             for (String[] row : rows) {
                 for (int i = 0; i < Math.min(row.length, headers.length); i++) {
-                    if (row[i] != null) widths[i] = Math.max(widths[i], getDisplayWidth(row[i]));
+                    if (row[i] != null){
+                        widths[i] = Math.max(widths[i], getDisplayWidth(row[i]));
+                    }
                 }
             }
 
@@ -881,13 +896,14 @@ public class AdminMainController {
             pw.println(separator);
             pw.println(buildRow(headers, widths));
             pw.println(separator);
-            for (String[] row : rows) pw.println(buildRow(row, widths));
+            for (String[] row : rows){
+                pw.println(buildRow(row, widths)); // handle null values and ensure proper spacing
+            }
             pw.println(separator);
             pw.println();
             pw.println("Total records: " + rows.size());
 
-            Alert alert = new Alert(Alert.AlertType.INFORMATION,
-                    tableName + " exported successfully to:\n" + file.getAbsolutePath());
+            Alert alert = new Alert(Alert.AlertType.INFORMATION, tableName + " exported successfully to:\n" + file.getAbsolutePath());
             alert.setHeaderText("Export Complete");
             alert.showAndWait();
 
@@ -899,14 +915,16 @@ public class AdminMainController {
 
     private String buildSeparator(int[] widths) {
         StringBuilder sb = new StringBuilder("+");
-        for (int w : widths) { sb.append("-".repeat(w + 2)).append("+"); }
+        for (int w : widths) {
+            sb.append("-".repeat(w + 2)).append("+"); // create separator line, adding 2 for the spaces around the content in each cell
+        }
         return sb.toString();
     }
 
     private String buildRow(String[] cells, int[] widths) {
         StringBuilder sb = new StringBuilder("|");
         for (int i = 0; i < widths.length; i++) {
-            String cell = (i < cells.length && cells[i] != null) ? cells[i] : "";
+            String cell = (i < cells.length && cells[i] != null) ? cells[i] : ""; // handle null values by treating them as empty strings
             int padding = widths[i] - getDisplayWidth(cell); // calculate how many spaces need to be filled
             sb.append(" ").append(cell).append(" ".repeat(Math.max(0, padding))).append(" |"); // manually fill the content and spaces, abandoning the use of String.format that causes misalignment
         }
@@ -930,7 +948,7 @@ public class AdminMainController {
         return width;
     }
 
-    // exports the users table from the database.
+    // export the users table from the database.
     private void exportUserList() {
         String sql = "SELECT id, username, role FROM users ORDER BY id";
         List<String[]> rows = new ArrayList<>();
@@ -960,7 +978,7 @@ public class AdminMainController {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/LoginView.fxml"));
             Scene loginScene = new Scene(loader.load(), MusicLibraryApp.LOGIN_SCENE_WIDTH, MusicLibraryApp.LOGIN_SCENE_HEIGHT);
-            stage.setScene(loginScene);
+            stage.setScene(loginScene); // switch back to login scene
             stage.setMinWidth(MusicLibraryApp.LOGIN_MIN_WIDTH);
             stage.setMinHeight(MusicLibraryApp.LOGIN_MIN_HEIGHT);
             stage.setWidth(MusicLibraryApp.LOGIN_SCENE_WIDTH);

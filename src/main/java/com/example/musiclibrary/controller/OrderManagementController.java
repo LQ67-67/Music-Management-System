@@ -36,31 +36,33 @@ public class OrderManagementController {
     private static final Logger LOGGER = Logger.getLogger(OrderManagementController.class.getName());
 
     @FXML private TableView<Order> orderTable;
-    @FXML private TableColumn<Order, Number>     colOrderId;
-    @FXML private TableColumn<Order, String>     colOrderDate;
-    @FXML private TableColumn<Order, String>     colStatus;
+    @FXML private TableColumn<Order, Number> colOrderId;
+    @FXML private TableColumn<Order, String> colOrderDate;
+    @FXML private TableColumn<Order, String> colStatus;
     @FXML private TableColumn<Order, BigDecimal> colTotal;
     @FXML private TableView<OrderItem> orderItemTable;
-    @FXML private TableColumn<OrderItem, String>     colTrack;
-    @FXML private TableColumn<OrderItem, Number>     colQuantity;
+    @FXML private TableColumn<OrderItem, String> colTrack;
+    @FXML private TableColumn<OrderItem, Number> colQuantity;
     @FXML private TableColumn<OrderItem, BigDecimal> colUnitPrice;
     @FXML private TableColumn<OrderItem, BigDecimal> colLineTotal;
     @FXML private TextField shippingCityField;
 
-    private final ObservableList<Order>     orders     = FXCollections.observableArrayList();
+    private final ObservableList<Order> orders = FXCollections.observableArrayList();
     private final ObservableList<OrderItem> orderItems = FXCollections.observableArrayList();
-    private final OrderDao     orderDao     = new OrderDao();
+    private final OrderDao orderDao = new OrderDao();
     private final OrderItemDao orderItemDao = new OrderItemDao();
-    private final TrackDao     trackDao     = new TrackDao();
+    private final TrackDao trackDao = new TrackDao();
     private final Map<Integer, String> trackLabelCache = new HashMap<>();
 
     @FXML
     private void initialize() {
         colOrderId.setCellValueFactory(p -> new SimpleIntegerProperty(p.getValue().getId()));
         colOrderDate.setCellValueFactory(p -> {
-            if (p.getValue().getOrderDate() == null) return new SimpleStringProperty("");
+            if (p.getValue().getOrderDate() == null){
+                return new SimpleStringProperty(""); // handle null order date gracefully
+            }
             return new SimpleStringProperty(
-                    p.getValue().getOrderDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
+                    p.getValue().getOrderDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))); // format the date for good readability
         });
         colStatus.setCellValueFactory(p -> new SimpleStringProperty(p.getValue().getStatus()));
         colTotal.setCellValueFactory(p -> new SimpleObjectProperty<>(p.getValue().getTotalAmount()));
@@ -76,33 +78,33 @@ public class OrderManagementController {
         orderTable.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal != null) {
                 loadOrderItems(newVal.getId());
-                shippingCityField.setText(newVal.getShippingCity() != null ? newVal.getShippingCity() : "");
+                shippingCityField.setText(newVal.getShippingCity() != null ? newVal.getShippingCity() : ""); // handle null shipping city gracefully
             } else {
                 orderItems.clear();
                 shippingCityField.clear();
             }
         });
 
-        loadOrders();
+        loadOrders(); // load orders when nothing wrong happened with the best cases (>_<)
     }
 
     private void loadOrders() {
         if (!SessionManager.isLoggedIn()) {
-            showError("You must be logged in to view orders.");
+            showError("You must be logged in to view orders."); // tbh this should never happen because the app should redirect to login if not authenticated, but just in case
             return;
         }
         try {
-            List<Order> list = orderDao.findByUser(SessionManager.getCurrentUser().getId());
+            List<Order> list = orderDao.findByUser(SessionManager.getCurrentUser().getId()); // load orders for the current logged in user only, not all orders in the system
             orders.setAll(list);
         } catch (SQLException e) {
-            LOGGER.log(Level.SEVERE, "Failed to load orders", e);
+            LOGGER.log(Level.SEVERE, "Failed to load orders", e); // log the full stack trace  if something wrong
             showError("Failed to load orders: " + e.getMessage());
         }
     }
 
     private void loadOrderItems(int orderId) {
         try {
-            orderItems.setAll(orderItemDao.findByOrder(orderId));
+            orderItems.setAll(orderItemDao.findByOrder(orderId)); // load order items for the selected order only, not all order items in the system, same with the previous one
         } catch (SQLException e) {
             LOGGER.log(Level.SEVERE, "Failed to load order items", e);
             showError("Failed to load order items: " + e.getMessage());
@@ -113,7 +115,10 @@ public class OrderManagementController {
     @FXML
     private void handleCancelOrder() {
         Order sel = orderTable.getSelectionModel().getSelectedItem();
-        if (sel == null) { showError("Please select an order first."); return; }
+        if (sel == null) {
+            showError("Please select an order first.");
+            return;
+        }
 
         if ("PAID".equals(sel.getStatus())) {
             showError("Cannot cancel a PAID order. Please contact support.");
@@ -189,10 +194,10 @@ public class OrderManagementController {
     private void showPaymentDialog(Order order, javafx.stage.Window owner) {
         Stage dialog = new Stage();
         dialog.initOwner(owner);
-        dialog.initModality(Modality.WINDOW_MODAL);
+        dialog.initModality(Modality.WINDOW_MODAL); // make the payment dialog modal to the main window, so users can't interact with the main window while the payment dialog is open
         dialog.setTitle("Pay Order #" + order.getId());
 
-        Label titleLabel = new Label("💳  Payment");
+        Label titleLabel = new Label("💳  Payment"); // lazy to use images to show, just use emoji for now, at least it looks better than nothing
         titleLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
 
         Label amountLabel = new Label(String.format("Amount to Pay: RM %s", order.getTotalAmount()));
@@ -202,19 +207,18 @@ public class OrderManagementController {
         grid.setHgap(12); grid.setVgap(12); grid.setPadding(new Insets(20));
 
         TextField cardNumberField = new TextField();
-        cardNumberField.setPromptText("1234 5678 9012 3456");
+        cardNumberField.setPromptText("1234 5678 9012 3456"); // prompt text to let user know what kind of format they are going to follow
         cardNumberField.setPrefWidth(260);
-        cardNumberField.setTextFormatter(new TextFormatter<>(change ->
-                change.getControlNewText().matches("[0-9 ]{0,19}") ? change : null));
+        cardNumberField.setTextFormatter(new TextFormatter<>(change -> change.getControlNewText().matches("[0-9 ]{0,19}") ? change : null)); // only allow digits and spaces, and limit the length to 19 (16 digits + 3 spaces)
 
         cardNumberField.textProperty().addListener((obs, oldText, newText) -> {
             if (oldText != null && newText.length() < oldText.length()) return;
             String digits = newText.replace(" ", "");
-            if (!digits.isEmpty() && digits.length() % 4 == 0 && digits.length() < 16) {
+            if (!digits.isEmpty() && digits.length() % 4 == 0 && digits.length() < 16) { // add a space after every 4 digits, but not if the user is deleting or if the card number is already complete
                 if (!newText.endsWith(" ")) {
                     javafx.application.Platform.runLater(() -> {
                         cardNumberField.setText(newText + " ");
-                        cardNumberField.positionCaret(cardNumberField.getText().length());
+                        cardNumberField.positionCaret(cardNumberField.getText().length()); // move the cursor to the end after adding a space so user can keep typing without interruption
                     });
                 }
             }
@@ -227,12 +231,11 @@ public class OrderManagementController {
         TextField expiryField = new TextField();
         expiryField.setPromptText("MM/YY");
         expiryField.setPrefWidth(100);
-        expiryField.setTextFormatter(new TextFormatter<>(change ->
-                change.getControlNewText().matches("[0-9/]{0,5}") ? change : null));
+        expiryField.setTextFormatter(new TextFormatter<>(change -> change.getControlNewText().matches("[0-9/]{0,5}") ? change : null)); // only allow digits and slash, and limit the length to 5 (4 digits + 1 slash)
 
         expiryField.textProperty().addListener((obs, oldText, newText) -> {
             if (oldText != null && newText.length() < oldText.length()) return;
-            if (newText.length() == 2 && !newText.contains("/")) {
+            if (newText.length() == 2 && !newText.contains("/")) { // add slash after the user types 2 digits for the month, but not if the user is deleting or if the slash is already there, same with card number
                 javafx.application.Platform.runLater(() -> {
                     expiryField.setText(newText + "/");
                     expiryField.positionCaret(expiryField.getText().length());
@@ -243,8 +246,7 @@ public class OrderManagementController {
         PasswordField cvvField = new PasswordField();
         cvvField.setPromptText("CVV");
         cvvField.setPrefWidth(80);
-        cvvField.setTextFormatter(new TextFormatter<>(change ->
-                change.getControlNewText().matches("[0-9]{0,3}") ? change : null));
+        cvvField.setTextFormatter(new TextFormatter<>(change -> change.getControlNewText().matches("[0-9]{0,3}") ? change : null)); // only allow digits and limit the length to 3 for CVV
 
         Label errorLabel = new Label("");
         errorLabel.setStyle("-fx-text-fill: red;");
@@ -278,7 +280,7 @@ public class OrderManagementController {
                 return;
             }
 
-            if (!expiry.matches("^(0[1-9]|1[0-2])/\\d{2}$")) {
+            if (!expiry.matches("^(0[1-9]|1[0-2])/\\d{2}$")) { // format check for MM/YY
                 errorLabel.setText("Please enter a valid expiry date (MM/YY).");
                 return;
             } else {
@@ -287,8 +289,8 @@ public class OrderManagementController {
                     int expMonth = Integer.parseInt(parts[0]);
                     int expYear = Integer.parseInt(parts[1]) + 2000;
 
-                    java.time.YearMonth currentYearMonth = java.time.YearMonth.now();
-                    java.time.YearMonth inputYearMonth = java.time.YearMonth.of(expYear, expMonth);
+                    java.time.YearMonth currentYearMonth = java.time.YearMonth.now(); // get the current year and month to compare with the expiry date
+                    java.time.YearMonth inputYearMonth = java.time.YearMonth.of(expYear, expMonth); // current month
 
                     if (inputYearMonth.isBefore(currentYearMonth)) {
                         errorLabel.setText("Your card has expired. Please use a valid card.");
@@ -328,9 +330,9 @@ public class OrderManagementController {
                         orderDao.update(order);
                         loadOrders();
 
-                        dialog.close(); // Close the payment dialog
+                        dialog.close(); // close the payment dialog
 
-                        // FIX: Use runLater so Mac doesn't render a blank window
+                        // use runLater so Mac doesn't render a blank window
                         javafx.application.Platform.runLater(() -> {
                             showPaymentSuccess(order.getId(), order.getTotalAmount());
                         });
@@ -372,17 +374,16 @@ public class OrderManagementController {
         root.setPadding(new Insets(24));
         root.setAlignment(Pos.TOP_CENTER);
 
-        dialog.setScene(new Scene(root, 480, 370));
+        dialog.setScene(new Scene(root, 480, 400));
         dialog.showAndWait();
     }
 
     private void showPaymentSuccess(int orderId, BigDecimal amount) {
         Stage stage = new Stage();
         stage.initModality(Modality.APPLICATION_MODAL);
-        // Updated the window title to be more professional
         stage.setTitle("Order Confirmation");
 
-        // 1. Header: Icon and Main Messages
+        // icon and main messages
         Label icon = new Label("🎉");
         icon.setStyle("-fx-font-size: 50px;");
 
@@ -395,12 +396,10 @@ public class OrderManagementController {
         VBox headerBox = new VBox(5, icon, msg, subMsg);
         headerBox.setAlignment(Pos.CENTER);
 
-        // 2. Divider Line
-        javafx.scene.control.Separator separator = new javafx.scene.control.Separator();
+        javafx.scene.control.Separator separator = new javafx.scene.control.Separator(); // divider Line
         separator.setPadding(new Insets(10, 0, 10, 0));
 
-        // 3. Receipt Details (Perfectly aligned using a GridPane)
-        javafx.scene.layout.GridPane detailsGrid = new javafx.scene.layout.GridPane();
+        javafx.scene.layout.GridPane detailsGrid = new javafx.scene.layout.GridPane(); // receipt details
         detailsGrid.setVgap(12);
         detailsGrid.setHgap(30);
         detailsGrid.setAlignment(Pos.CENTER);
@@ -413,35 +412,30 @@ public class OrderManagementController {
         Label lblDate = new Label("Date:");
         lblDate.setStyle("-fx-text-fill: #666666; -fx-font-weight: bold;");
 
-        // Dynamically grab the exact current time for the receipt
-        String currentDate = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("dd MMM yyyy, HH:mm"));
+        String currentDate = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("dd MMM yyyy, HH:mm")); // grab the exact current time for the receipt
         Label valDate = new Label(currentDate);
         valDate.setStyle("-fx-font-size: 13px;");
 
         Label lblAmount = new Label("Amount Paid:");
         lblAmount.setStyle("-fx-text-fill: #666666; -fx-font-weight: bold;");
         Label valAmount = new Label(String.format("RM %.2f", amount));
-        // Highlight the final amount
-        valAmount.setStyle("-fx-font-weight: bold; -fx-font-size: 15px; -fx-text-fill: #1565c0;");
+        valAmount.setStyle("-fx-font-weight: bold; -fx-font-size: 15px; -fx-text-fill: #1565c0;");  // highlight final amount
 
         detailsGrid.add(lblOrder, 0, 0);  detailsGrid.add(valOrder, 1, 0);
         detailsGrid.add(lblDate, 0, 1);   detailsGrid.add(valDate, 1, 1);
         detailsGrid.add(lblAmount, 0, 2); detailsGrid.add(valAmount, 1, 2);
 
-        // 4. Bottom Button
-        Button okBtn = new Button("Done");
+        Button okBtn = new Button("Done"); // bottom Button
         okBtn.setStyle("-fx-background-color: #2e7d32; -fx-text-fill: white; -fx-font-weight: bold; -fx-pref-width: 120px; -fx-padding: 8px; -fx-cursor: hand;");
         okBtn.setOnAction(e -> stage.close());
 
-        // Assemble everything with a slight off-white/gray background to mimic paper
-        VBox box = new VBox(15, headerBox, separator, detailsGrid, new Label(""), okBtn);
+        VBox box = new VBox(15, headerBox, separator, detailsGrid, new Label(""), okBtn); // assemble everything with a slight off-white/gray background to mimic paper
         box.setAlignment(Pos.TOP_CENTER);
         box.setPadding(new Insets(25, 30, 25, 30));
         box.setStyle("-fx-background-color: #f8f9fa;");
 
         stage.setScene(new Scene(box, 380, 390));
-        // Prevent the user from resizing the window so our receipt layout doesn't break
-        stage.setResizable(false);
+        stage.setResizable(false); // prevent the user from resizing the window so receipt layout doesn't break
         stage.showAndWait();
     }
 
@@ -457,8 +451,7 @@ public class OrderManagementController {
         Label orderLabel = new Label("Order #" + sel.getId());
         orderLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
 
-        String dateString = sel.getOrderDate() != null
-                ? sel.getOrderDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")) : "N/A";
+        String dateString = sel.getOrderDate() != null ? sel.getOrderDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")) : "N/A"; // handle null order date
 
         Label dateLabel   = new Label("Date: " + dateString);
         Label statusLabel = new Label("Status: " + sel.getStatus());
@@ -468,13 +461,13 @@ public class OrderManagementController {
         TableView<OrderItem> itemTable = new TableView<>(orderItems);
         itemTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
 
-        TableColumn<OrderItem, String>     trackCol = new TableColumn<>("Track");
+        TableColumn<OrderItem, String> trackCol = new TableColumn<>("Track");
         trackCol.setCellValueFactory(p -> new SimpleStringProperty(getTrackLabel(p.getValue().getTrackId())));
-        TableColumn<OrderItem, Number>     qtyCol   = new TableColumn<>("Qty");
+        TableColumn<OrderItem, Number> qtyCol = new TableColumn<>("Qty");
         qtyCol.setCellValueFactory(p -> new SimpleIntegerProperty(p.getValue().getQuantity()));
         TableColumn<OrderItem, BigDecimal> priceCol = new TableColumn<>("Price");
         priceCol.setCellValueFactory(p -> new SimpleObjectProperty<>(p.getValue().getUnitPrice()));
-        TableColumn<OrderItem, BigDecimal> totCol   = new TableColumn<>("Total");
+        TableColumn<OrderItem, BigDecimal> totCol = new TableColumn<>("Total");
         totCol.setCellValueFactory(p -> new SimpleObjectProperty<>(p.getValue().getLineTotal()));
 
         itemTable.getColumns().add(trackCol);
@@ -499,7 +492,7 @@ public class OrderManagementController {
         String trackName;
         try {
             Track track = trackDao.findById(trackId);
-            trackName = track == null ? "Track #" + trackId : track.getTitle() + " - " + track.getArtist();
+            trackName = track == null ? "Track #" + trackId : track.getTitle() + " - " + track.getArtist(); // if track is not found, show the id instead to avoid showing blank
         } catch (SQLException e) {
             LOGGER.log(Level.WARNING, "Failed to fetch track label for id " + trackId, e);
             trackName = "Track #" + trackId;

@@ -18,7 +18,7 @@ import java.util.List;
 
 public class OrderService {
 
-    // Create a new order with cart items
+    // create new order with cart items
     public Order createOrder(int customerId, int userId, List<OrderItem> cartItems, String shippingCity) throws SQLException {
         if (customerId <= 0 || userId <= 0) {
             throw new IllegalArgumentException("Invalid customer or user id");

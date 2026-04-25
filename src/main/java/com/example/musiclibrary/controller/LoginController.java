@@ -32,15 +32,8 @@ public class LoginController {
     private void initialize() {
         userDao = new UserDao();
 
-        // limit 20 characters can be typed in the username field
-        usernameField.setTextFormatter(new TextFormatter<>(change ->
-                change.getControlNewText().length() <= USERNAME_MAX_LEN ? change : null
-        ));
-
-        // limit 30 characters can be typed in the password field
-        passwordField.setTextFormatter(new TextFormatter<>(change ->
-                change.getControlNewText().length() <= PASSWORD_MAX_LEN ? change : null
-        ));
+        usernameField.setTextFormatter(new TextFormatter<>(change -> change.getControlNewText().length() <= USERNAME_MAX_LEN ? change : null )); // limit 20 characters can be typed in the username field
+        passwordField.setTextFormatter(new TextFormatter<>(change -> change.getControlNewText().length() <= PASSWORD_MAX_LEN ? change : null)); // limit 30 characters
     }
 
     @FXML
@@ -49,14 +42,14 @@ public class LoginController {
         String password = passwordField.getText();
 
         if (username.isEmpty() || password.isEmpty()) {
-            errorLabel.setText("Please enter username and password.");
+            errorLabel.setText("Please enter username and password."); // if either field is empty, show error
             return;
         }
 
         try {
             User user = userDao.findByUsername(username);
             if (user == null || !password.equals(user.getPasswordHash())) {
-                errorLabel.setText("Wrong username or password.");
+                errorLabel.setText("Wrong username or password."); // if user not found or password doesn't match, show error
                 return;
             }
 
@@ -64,13 +57,12 @@ public class LoginController {
             errorLabel.setText("");
             infoLabel.setText("");
 
-            // switch to the main scene directly here without a helper method
-            Stage stage = (Stage) usernameField.getScene().getWindow();
+            Stage stage = (Stage) usernameField.getScene().getWindow(); // switch to the main scene directly here without a helper method
             URL resource;
 
             if (SessionManager.isAdmin()) {
                 resource = getClass().getResource("/fxml/AdminMainView.fxml");
-                stage.setScene(new Scene(FXMLLoader.load(resource)));
+                stage.setScene(new Scene(FXMLLoader.load(resource))); // load the admin main view
             } else {
                 resource = getClass().getResource("/fxml/UserMainView.fxml");
                 stage.setScene(new Scene(FXMLLoader.load(resource)));
@@ -141,7 +133,7 @@ public class LoginController {
                 infoLabel.setText("Registration successful! Please login.");
 
             } catch (SQLException ex) {
-                String errorMsg = ex.getMessage().contains("Duplicate entry") ? "Username already exists." : "Registration failed: " + ex.getMessage();
+                String errorMsg = ex.getMessage().contains("Duplicate entry") ? "Username already exists." : "Registration failed: " + ex.getMessage(); // if the error message contains "Duplicate entry", it means the username already exists
                 Alert alert = new Alert(Alert.AlertType.ERROR, errorMsg);
                 alert.initOwner(dialog);
                 alert.setHeaderText(null);
