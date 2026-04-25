@@ -181,6 +181,15 @@ mvn test
 - The current DB configuration is written dead in code, so it is recommended to change it to an environment variable or configuration file. 
 - Upload resources directly to 'src/main/resources', which is more suitable for development environments. If you need to publish, it is recommended to have a separate external storage directory. 
 
+## References
+- JavaFX Documentation: https://openjfx.io/
+- MySQL Connector/J Documentation: https://dev.mysql.com/doc/connector-j/8.
+- JUnit 5 User Guide: https://junit.org/junit5/docs/current/user-guide/
+- Maven Documentation: https://maven.apache.org/guides/index.html
+- JPMS (Java Platform Module System) Guide: https://openjdk.org/projects/jigsaw/quick-start
+- Music Library: http://www.999ttt.com/l/qingyinyue/index.html
+- Icons images: https://www.iconfont.cn/
+
 ## License
 
 This project uses the MIT License, see 'LICENSE' for details.
