@@ -16,7 +16,7 @@
             fx:controller="com.example.musiclibrary.controller.UserMainController"
             stylesheets="@../css/app.css"
             prefWidth="1280.0"
-            prefHeight="960.0">
+            prefHeight="864.0">
 
     <top>
         <HBox spacing="10">
