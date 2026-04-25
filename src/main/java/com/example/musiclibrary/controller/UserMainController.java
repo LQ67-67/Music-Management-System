@@ -17,11 +17,9 @@ import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Insets;
-import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.image.ImageView;
@@ -33,12 +31,10 @@ import javafx.stage.Stage;
 
 import java.math.BigDecimal;
 import java.sql.SQLException;
-import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class UserMainController {
-
     private static final Logger LOGGER = Logger.getLogger(UserMainController.class.getName());
 
     @FXML private Label welcomeLabel;
@@ -297,7 +293,7 @@ public class UserMainController {
 
         cartTable.getColumns().addAll(titleCol, qtyCol, priceCol, totalCol);
 
-        // Calculate the total price of everything in the cart
+        // calculate the total price of everything in the cart
         BigDecimal cartTotal = cartItems.stream()
                 .map(OrderItem::getLineTotal)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -319,293 +315,39 @@ public class UserMainController {
         Button clearBtn = new Button("Clear Cart");
         clearBtn.setOnAction(e -> { cartItems.clear(); dialog.close(); });
 
-        Button payBtn = new Button("Proceed to Payment");
-        payBtn.setStyle("-fx-background-color: #2e7d32; -fx-text-fill: white; -fx-font-weight: bold;");
+        Button checkoutBtn = new Button("Checkout");
+        checkoutBtn.setStyle("-fx-background-color: #2e7d32; -fx-text-fill: white; -fx-font-weight: bold;");
 
-        // Use runLater to prevent window focus issues when swapping dialogs
-        payBtn.setOnAction(e -> {
-            dialog.close();
-            javafx.application.Platform.runLater(() ->
-                    showPaymentDialog(cartTotal, trackTable.getScene().getWindow())
-            );
+        checkoutBtn.setOnAction(e -> {
+            try {
+                int customerId = resolveCustomerIdForCurrentUser();
+                int userId = SessionManager.getCurrentUser().getId();
+
+                Order newOrder = orderService.createOrder(customerId, userId, cartItems, null); // create the order
+                newOrder.setStatus("PENDING");
+                orderDao.update(newOrder);
+
+                // clear cart and refresh
+                cartItems.clear();
+                loadAllTracks();
+                dialog.close();
+
+                showInfo("Checkout successful!\nPlease go to 'View Orders' to complete your payment.");
+
+            } catch (Exception ex) {
+                LOGGER.log(Level.SEVERE, "Checkout failed", ex);
+                showError("Checkout failed: " + ex.getMessage());
+            }
         });
 
         Button closeBtn = new Button("Close");
         closeBtn.setOnAction(e -> dialog.close());
 
         VBox layoutBox = new VBox(12, cartTable, totalLabel,
-                new HBox(10, removeBtn, clearBtn, payBtn, closeBtn));
+                new HBox(10, removeBtn, clearBtn, checkoutBtn, closeBtn));
         layoutBox.setPadding(new Insets(15));
         dialog.setScene(new Scene(layoutBox, 600, 430));
         dialog.showAndWait();
-    }
-
-    private void showPaymentDialog(BigDecimal amount, javafx.stage.Window owner) {
-        Stage dialog = new Stage();
-        dialog.initOwner(owner);
-        dialog.initModality(Modality.WINDOW_MODAL);
-        dialog.setTitle("Secure Payment");
-
-        Label titleLabel = new Label("💳  Payment");
-        titleLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
-
-        Label amountLabel = new Label(String.format("Amount to Pay: RM %.2f", amount));
-        amountLabel.setStyle("-fx-font-size: 14px;");
-
-        GridPane grid = new GridPane();
-        grid.setHgap(12); grid.setVgap(12); grid.setPadding(new Insets(20));
-
-        // --- 1. Card Number Formatting: Auto-insert spaces every 4 digits ---
-        TextField cardNumberField = new TextField();
-        cardNumberField.setPromptText("1234 5678 9012 3456");
-        cardNumberField.setPrefWidth(260);
-
-        cardNumberField.setTextFormatter(new TextFormatter<>(change ->
-                change.getControlNewText().matches("[0-9 ]{0,19}") ? change : null));
-
-        cardNumberField.textProperty().addListener((obs, oldText, newText) -> {
-            if (oldText != null && newText.length() < oldText.length()) return;
-
-            String digits = newText.replaceAll(" ", "");
-            if (digits.length() > 0 && digits.length() % 4 == 0 && digits.length() < 16) {
-                if (!newText.endsWith(" ")) {
-                    javafx.application.Platform.runLater(() -> {
-                        cardNumberField.setText(newText + " ");
-                        cardNumberField.positionCaret(cardNumberField.getText().length());
-                    });
-                }
-            }
-        });
-
-        TextField cardHolderField = new TextField();
-        cardHolderField.setPromptText("Full Name on Card");
-        cardHolderField.setPrefWidth(260);
-
-        // --- 2. Expiry Date Formatting: Auto-insert a slash after the month ---
-        TextField expiryField = new TextField();
-        expiryField.setPromptText("MM/YY");
-        expiryField.setPrefWidth(100);
-
-        expiryField.setTextFormatter(new TextFormatter<>(change ->
-                change.getControlNewText().matches("[0-9/]{0,5}") ? change : null));
-
-        expiryField.textProperty().addListener((obs, oldText, newText) -> {
-            if (oldText != null && newText.length() < oldText.length()) return;
-            if (newText.length() == 2 && !newText.contains("/")) {
-                javafx.application.Platform.runLater(() -> {
-                    expiryField.setText(newText + "/");
-                    expiryField.positionCaret(expiryField.getText().length());
-                });
-            }
-        });
-
-        PasswordField cvvField = new PasswordField();
-        cvvField.setPromptText("CVV");
-        cvvField.setPrefWidth(80);
-        cvvField.setTextFormatter(new TextFormatter<>(change ->
-                change.getControlNewText().matches("[0-9]{0,3}") ? change : null));
-
-        Label errorLabel = new Label("");
-        errorLabel.setStyle("-fx-text-fill: red;");
-
-        grid.add(new Label("Card Number:"), 0, 0); grid.add(cardNumberField, 1, 0);
-        grid.add(new Label("Card Holder:"), 0, 1); grid.add(cardHolderField, 1, 1);
-        grid.add(new Label("Expiry (MM/YY):"), 0, 2); grid.add(expiryField, 1, 2);
-        grid.add(new Label("CVV:"), 0, 3); grid.add(cvvField, 1, 3);
-        grid.add(errorLabel, 0, 4, 2, 1);
-
-        Button confirmPayBtn = new Button("Confirm Payment");
-        confirmPayBtn.setStyle("-fx-background-color: #1565c0; -fx-text-fill: white; -fx-font-weight: bold;");
-
-        Button cancelPayBtn = new Button("Cancel");
-
-        Label statusLabel = new Label("");
-        statusLabel.setStyle("-fx-font-style: italic;");
-
-        confirmPayBtn.setOnAction(e -> {
-            String cardNumber = cardNumberField.getText().replaceAll(" ", "");
-            String cardHolder = cardHolderField.getText().trim();
-            String expiry = expiryField.getText().trim();
-            String cvv = cvvField.getText().trim();
-
-            if (cardNumber.length() != 16 || !cardNumber.matches("\\d{16}")) {
-                errorLabel.setText("Please enter a valid 16-digit card number.");
-                return;
-            }
-            if (cardHolder.isEmpty()) {
-                errorLabel.setText("Please enter the card holder name.");
-                return;
-            }
-
-            // strict check to ensure the card hasn't expired
-            if (!expiry.matches("^(0[1-9]|1[0-2])/\\d{2}$")) {
-                errorLabel.setText("Please enter a valid expiry date (MM/YY).");
-                return;
-            } else {
-                try {
-                    String[] parts = expiry.split("/");
-                    int expMonth = Integer.parseInt(parts[0]);
-                    int expYear = Integer.parseInt(parts[1]) + 2000;
-
-                    // grab the actual current system date
-                    java.time.YearMonth currentYearMonth = java.time.YearMonth.now();
-                    java.time.YearMonth inputYearMonth = java.time.YearMonth.of(expYear, expMonth);
-
-                    if (inputYearMonth.isBefore(currentYearMonth)) {
-                        errorLabel.setText("Your card has expired. Please use a valid card.");
-                        return;
-                    }
-                } catch (Exception ex) {
-                    errorLabel.setText("Invalid expiry date.");
-                    return;
-                }
-            }
-
-            if (cvv.length() != 3) {
-                errorLabel.setText("Please enter a valid 3-digit CVV.");
-                return;
-            }
-
-            // lock the UI to prevent double submissions
-            confirmPayBtn.setDisable(true);
-            cancelPayBtn.setDisable(true);
-            errorLabel.setText("");
-            statusLabel.setText("Processing payment... Please wait.");
-
-            // fake a payment gateway delay using a background task
-            Task<Boolean> paymentTask = new Task<>() {
-                @Override
-                protected Boolean call() throws Exception {
-                    Thread.sleep(2000);
-                    return new Random().nextInt(100) < 85;
-                }
-            };
-
-            paymentTask.setOnSucceeded(event -> {
-                boolean success = paymentTask.getValue();
-                statusLabel.setText("");
-
-                if (success) {
-                    try {
-                        int customerId = resolveCustomerIdForCurrentUser();
-                        int userId = SessionManager.getCurrentUser().getId();
-                        Order newOrder = orderService.createOrder(customerId, userId, cartItems, null);
-
-                        newOrder.setStatus("PAID");
-                        orderDao.update(newOrder);
-
-                        cartItems.clear();
-                        loadAllTracks();
-
-                        dialog.close(); // Close the payment dialog
-
-                        // FIX: Use runLater so Mac doesn't render a blank window
-                        javafx.application.Platform.runLater(() -> {
-                            showPaymentSuccess(newOrder.getId(), amount);
-                        });
-
-                    } catch (Exception ex) {
-                        LOGGER.log(Level.SEVERE, "Order creation after payment failed", ex);
-                        confirmPayBtn.setDisable(false);
-                        cancelPayBtn.setDisable(false);
-                        errorLabel.setText("Payment succeeded but order creation failed: " + ex.getMessage());
-                    }
-                } else {
-                    LOGGER.warning("Simulated payment declined for card ending in " + cardNumber.substring(12));
-                    confirmPayBtn.setDisable(false);
-                    cancelPayBtn.setDisable(false);
-                    errorLabel.setText("Payment declined. Please check your card details and try again.");
-                }
-            });
-
-            paymentTask.setOnFailed(event -> {
-                Throwable ex = paymentTask.getException();
-                LOGGER.log(Level.SEVERE, "Payment processing error", ex);
-                confirmPayBtn.setDisable(false);
-                cancelPayBtn.setDisable(false);
-                statusLabel.setText("");
-                errorLabel.setText("Network error, please try again later.");
-            });
-
-            Thread paymentThread = new Thread(paymentTask);
-            paymentThread.setDaemon(true);
-            paymentThread.start();
-        });
-
-        cancelPayBtn.setOnAction(e -> dialog.close());
-
-        HBox buttons = new HBox(12, confirmPayBtn, cancelPayBtn);
-        buttons.setAlignment(Pos.CENTER);
-
-        VBox root = new VBox(14, titleLabel, amountLabel, grid, buttons, statusLabel);
-        root.setPadding(new Insets(24));
-        root.setAlignment(Pos.TOP_CENTER);
-
-        dialog.setScene(new Scene(root, 480, 370));
-        dialog.showAndWait();
-    }
-
-    private void showPaymentSuccess(int orderId, BigDecimal amount) {
-        Stage stage = new Stage();
-        stage.initModality(Modality.APPLICATION_MODAL);
-        stage.setTitle("Order Confirmation");  // updated the window title to be more professional
-
-        Label icon = new Label("🎉");  // header celebration emoji
-        icon.setStyle("-fx-font-size: 50px;");
-
-        Label msg = new Label("Thank You!");
-        msg.setStyle("-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #2e7d32;");
-
-        Label subMsg = new Label("Your payment was successfully processed.");
-        subMsg.setStyle("-fx-font-size: 13px; -fx-text-fill: #555555;");
-
-        VBox headerBox = new VBox(5, icon, msg, subMsg);
-        headerBox.setAlignment(Pos.CENTER);
-
-        javafx.scene.control.Separator separator = new javafx.scene.control.Separator(); // divider line
-        separator.setPadding(new Insets(10, 0, 10, 0));
-
-        javafx.scene.layout.GridPane detailsGrid = new javafx.scene.layout.GridPane(); // receipt details
-        detailsGrid.setVgap(12);
-        detailsGrid.setHgap(30);
-        detailsGrid.setAlignment(Pos.CENTER);
-
-        Label lblOrder = new Label("Order Number:");
-        lblOrder.setStyle("-fx-text-fill: #666666; -fx-font-weight: bold;");
-        Label valOrder = new Label("#" + orderId);
-        valOrder.setStyle("-fx-font-weight: bold; -fx-font-size: 13px;");
-
-        Label lblDate = new Label("Date:");
-        lblDate.setStyle("-fx-text-fill: #666666; -fx-font-weight: bold;");
-
-        String currentDate = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("dd MMM yyyy, HH:mm")); // dynamically grab the exact current time for the receipt
-        Label valDate = new Label(currentDate);
-        valDate.setStyle("-fx-font-size: 13px;");
-
-        Label lblAmount = new Label("Amount Paid:");
-        lblAmount.setStyle("-fx-text-fill: #666666; -fx-font-weight: bold;");
-        Label valAmount = new Label(String.format("RM %.2f", amount));
-        valAmount.setStyle("-fx-font-weight: bold; -fx-font-size: 15px; -fx-text-fill: #1565c0;"); // highlight the final amount
-
-        detailsGrid.add(lblOrder, 0, 0);  detailsGrid.add(valOrder, 1, 0);
-        detailsGrid.add(lblDate, 0, 1);   detailsGrid.add(valDate, 1, 1);
-        detailsGrid.add(lblAmount, 0, 2); detailsGrid.add(valAmount, 1, 2);
-
-        // 4. Bottom Button
-        Button okBtn = new Button("Done");
-        okBtn.setStyle("-fx-background-color: #2e7d32; -fx-text-fill: white; -fx-font-weight: bold; -fx-pref-width: 120px; -fx-padding: 8px; -fx-cursor: hand;");
-        okBtn.setOnAction(e -> stage.close());
-
-        // Assemble everything with a slight off-white/gray background to mimic paper
-        VBox box = new VBox(15, headerBox, separator, detailsGrid, new Label(""), okBtn);
-        box.setAlignment(Pos.TOP_CENTER);
-        box.setPadding(new Insets(25, 30, 25, 30));
-        box.setStyle("-fx-background-color: #f8f9fa;");
-
-        stage.setScene(new Scene(box, 380, 390));
-        // Prevent the user from resizing the window so our receipt layout doesn't break
-        stage.setResizable(false);
-        stage.showAndWait();
     }
 
     @FXML

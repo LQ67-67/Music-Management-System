@@ -109,26 +109,6 @@ public class OrderManagementController {
         }
     }
 
-    @FXML
-    private void handleConfirmOrder() {
-        Order sel = orderTable.getSelectionModel().getSelectedItem();
-        if (sel == null) { showError("Please select an order first."); return; }
-
-        if ("PAID".equals(sel.getStatus()) || "CANCELLED".equals(sel.getStatus())) {
-            showError("Cannot confirm an order that is already " + sel.getStatus() + ".");
-            return;
-        }
-
-        sel.setStatus("CONFIRMED");
-        sel.setShippingCity(shippingCityField.getText());
-        try {
-            orderDao.update(sel);
-            loadOrders();
-        } catch (SQLException e) {
-            LOGGER.log(Level.SEVERE, "Failed to confirm order", e);
-            showError("Failed to confirm order: " + e.getMessage());
-        }
-    }
 
     @FXML
     private void handleCancelOrder() {
@@ -168,15 +148,39 @@ public class OrderManagementController {
     @FXML
     private void handlePayOrder() {
         Order sel = orderTable.getSelectionModel().getSelectedItem();
-        if (sel == null) { showError("Please select an order to pay."); return; }
+        if (sel == null) {
+            showError("Please select an order to pay.");
+            return;
+        }
 
+        // check if shipping city is empty
+        String city = shippingCityField.getText().trim();
+        if (city.isEmpty()) {
+            showError("Please enter a Shipping City before proceeding to payment.");
+            return;
+        }
+
+        // verify the status of the order
         if ("PAID".equals(sel.getStatus())) {
-            showError("This order has already been paid."); return;
+            showError("This order has already been paid.");
+            return;
         }
         if ("CANCELLED".equals(sel.getStatus())) {
-            showError("Cannot pay a cancelled order."); return;
+            showError("Cannot pay a cancelled order.");
+            return;
         }
 
+        // save city information to database(make sure info is synchronized before paying)
+        try {
+            sel.setShippingCity(city);
+            orderDao.update(sel);
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Failed to save shipping city", e);
+            showError("Database error: Could not save shipping city.");
+            return;
+        }
+
+        // if and only if after the check is passed and saved successfully payment window will pop up
         javafx.application.Platform.runLater(() ->
                 showPaymentDialog(sel, orderTable.getScene().getWindow())
         );

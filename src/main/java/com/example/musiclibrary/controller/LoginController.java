@@ -70,11 +70,12 @@ public class LoginController {
 
             if (SessionManager.isAdmin()) {
                 resource = getClass().getResource("/fxml/AdminMainView.fxml");
-                stage.setScene(new Scene(FXMLLoader.load(resource), 1100, 760));
+                stage.setScene(new Scene(FXMLLoader.load(resource)));
             } else {
                 resource = getClass().getResource("/fxml/UserMainView.fxml");
-                stage.setScene(new Scene(FXMLLoader.load(resource), 1050, 720));
+                stage.setScene(new Scene(FXMLLoader.load(resource)));
             }
+            stage.centerOnScreen(); // window will be centered on the screen after loading
 
             stage.setMinWidth(900);
             stage.setMinHeight(620);
