@@ -1,0 +1,21 @@
+========================================
+  MUSIC LIBRARY – TRACKS
+  Exported: 2026-04-25 15:36:12
+========================================
+
++----+------------------------------------+---------------------+-----------------------------+------------------+-------+-------+
+| ID | Title                              | Artist              | Album                       | Genre            | Price | Stock |
++----+------------------------------------+---------------------+-----------------------------+------------------+-------+-------+
+| 1  | 1. Until Tomorrow's Twilight       | 北川勝利            | ARIA The OVA ~ARIETTA~      | Anime            | 3.50  | 98    |
+| 2  | 2. Nagisa (なぎさ)                 | Key Sound Team      | CLANNAD ORIGINAL SOUNDTRACK | Anime            | 4.20  | 80    |
+| 3  | 3. The Day I Waited for the Wind   | Key Sounds Label    | Kanon                       | Anime            | 5.00  | 45    |
+| 4  | 4. Bad Apple                       | Touhou Project game | Touhou                      | Remix            | 6.00  | 67    |
+| 5  | 5. Moon Light                      | Fred Capozio        | Moon Light                  | Piano            | 7.00  | 40    |
+| 6  | 6. The Promise of the Dandelion    | Jay Chou            | I am busy                   | Piano            | 15.00 | 90    |
+| 7  | 7. Schubert's Serenade (Ständchen) | Franz Schubert      | Schwanengesang              | Classics         | 10.00 | 70    |
+| 8  | 8. Affections Touching Across Time | Kaoru Wada          | Inuyasha                    | Piano            | 15.00 | 100   |
+| 9  | 9. Ievan Polkka                    | Hatsune Miku        | Ievan Polkka                | Electronic music | 8.00  | 40    |
+| 10 | 10. Ariga Thesis                   | MUYKKE              | Ariga Thesis                | Remix            | 5.20  | 100   |
++----+------------------------------------+---------------------+-----------------------------+------------------+-------+-------+
+
+Total records: 10

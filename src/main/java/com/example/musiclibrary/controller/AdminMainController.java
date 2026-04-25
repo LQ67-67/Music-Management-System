@@ -142,7 +142,7 @@ public class AdminMainController {
             else showError("Please select a track from the table to delete.");
         });
 
-        Button exportBtn = new Button("Export Track List (TXT)");
+        Button exportBtn = new Button("Export Track List (txt)");
         exportBtn.setOnAction(e -> exportTableToTxt("Tracks", new String[]{"ID", "Title", "Artist", "Album", "Genre", "Price", "Stock"},
                 trackData.stream().map(t -> new String[]{
                         String.valueOf(t.getId()), t.getTitle(), t.getArtist(),
@@ -392,7 +392,7 @@ public class AdminMainController {
             else showError("Please select a customer to delete.");
         });
 
-        Button exportBtn = new Button("Export Customer List (TXT)");
+        Button exportBtn = new Button("Export Customer List (txt)");
         exportBtn.setOnAction(e -> exportTableToTxt("Customers", new String[]{"ID", "Name", "Email", "Phone", "City"},
                 customerData.stream().map(c -> new String[]{
                         String.valueOf(c.getId()), c.getName(),
@@ -503,7 +503,7 @@ public class AdminMainController {
             else showError("Please select an order to edit.");
         });
 
-        Button exportBtn = new Button("Export Order List (TXT)");
+        Button exportBtn = new Button("Export Order List (txt)");
         exportBtn.setOnAction(e -> exportTableToTxt("Orders",
                 new String[]{"Order ID", "Username", "Customer", "Date", "Status", "Total", "City"},
                 new ArrayList<>(orderData)));
@@ -603,7 +603,7 @@ public class AdminMainController {
 
         TableView<String> reportTable = new TableView<>();
         reportTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
-        reportTable.setPrefHeight(250); // slightly increased to fit the left column layout better
+        reportTable.setPrefHeight(250);  // slightly increased to fit the left column layout better
 
         Label avgLabel = new Label(), sumLabel = new Label(), maxLabel = new Label(), minLabel = new Label();
 
@@ -622,13 +622,13 @@ public class AdminMainController {
         refreshBtn.setOnAction(e -> refreshReport(reportType.getValue()));
         reportType.setOnAction(e -> refreshReport(reportType.getValue()));
 
-        Button exportPieBtn = new Button("Export Chart Data (TXT)");
+        Button exportPieBtn = new Button("Export Chart Data (txt)");
         exportPieBtn.setOnAction(e -> {
             if (lastPieData.isEmpty()) { showError("No chart data to export. Select a report first."); return; }
             exportTableToTxt(lastPieTitle, new String[]{"Category", "Value"}, lastPieData);
         });
 
-        Button exportUserListBtn = new Button("Export User List (TXT)");
+        Button exportUserListBtn = new Button("Export User List (txt)");
         exportUserListBtn.setOnAction(e -> exportUserList());
 
         // left Column (2/3 Width)
@@ -852,7 +852,10 @@ public class AdminMainController {
     private void exportTableToTxt(String tableName, String[] headers, List<String[]> rows) {
         FileChooser fc = new FileChooser();
         fc.setTitle("Export " + tableName);
-        fc.setInitialFileName(tableName.replace(" ", "_") + "_export.txt");
+
+        String fileTimestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy_MM_dd_HHmmss"));  // generate a current timestamp suitable for the file name
+        fc.setInitialFileName(tableName.replace(" ", "_") + "_export_" + fileTimestamp + ".txt"); // add the timestamp to the end of the file name
+
         fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("Text Files (*.txt)", "*.txt"));
         File file = fc.showSaveDialog(tabPane.getScene().getWindow());
         if (file == null) return;
@@ -865,12 +868,12 @@ public class AdminMainController {
             pw.println("========================================");
             pw.println();
 
-            // compute column widths
+            // compute column widths based on display length
             int[] widths = new int[headers.length];
-            for (int i = 0; i < headers.length; i++) widths[i] = headers[i].length();
+            for (int i = 0; i < headers.length; i++) widths[i] = getDisplayWidth(headers[i]);
             for (String[] row : rows) {
                 for (int i = 0; i < Math.min(row.length, headers.length); i++) {
-                    if (row[i] != null) widths[i] = Math.max(widths[i], row[i].length());
+                    if (row[i] != null) widths[i] = Math.max(widths[i], getDisplayWidth(row[i]));
                 }
             }
 
@@ -904,9 +907,27 @@ public class AdminMainController {
         StringBuilder sb = new StringBuilder("|");
         for (int i = 0; i < widths.length; i++) {
             String cell = (i < cells.length && cells[i] != null) ? cells[i] : "";
-            sb.append(" ").append(String.format("%-" + widths[i] + "s", cell)).append(" |");
+            int padding = widths[i] - getDisplayWidth(cell); // calculate how many spaces need to be filled
+            sb.append(" ").append(cell).append(" ".repeat(Math.max(0, padding))).append(" |"); // manually fill the content and spaces, abandoning the use of String.format that causes misalignment
         }
         return sb.toString();
+    }
+
+    // calculate the visual width of a string (2 for full-width characters, 1 for half-width)
+    // to fix misaligned if sometimes name of the song is too long which will looks wrong in tables
+    private int getDisplayWidth(String str) {
+        if (str == null) return 0;
+        int width = 0;
+        for (int i = 0; i < str.length(); i++) {
+            char c = str.charAt(i);
+            // matches most of the Unicode range in Chinese, Japanese, and Korean with full-width punctuation
+            if ((c >= 0x2E80 && c <= 0xFE4F) || (c >= 0xFF00 && c <= 0xFFEF)) {
+                width += 2;
+            } else {
+                width += 1;
+            }
+        }
+        return width;
     }
 
     // exports the users table from the database.
