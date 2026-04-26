@@ -105,6 +105,10 @@ public class AdminMainController {
             }
         });
 
+        TableColumn<Track, Integer> idCol = new TableColumn<>("ID");
+        idCol.setCellValueFactory(p -> new SimpleObjectProperty<>(p.getValue().getId()));
+        idCol.setPrefWidth(50);
+
         TableColumn<Track, String> titleCol = new TableColumn<>("Title");
         titleCol.setCellValueFactory(p -> new SimpleStringProperty(p.getValue().getTitle()));
 
@@ -126,7 +130,7 @@ public class AdminMainController {
         TableColumn<Track, String> stockCol = new TableColumn<>("Stock");
         stockCol.setCellValueFactory(p -> new SimpleStringProperty(String.valueOf(p.getValue().getStockQty())));
 
-        trackTable.getColumns().addAll(imageCol, titleCol, artistCol, albumCol, genreCol, priceCol, stockCol);
+        trackTable.getColumns().addAll(imageCol, idCol, titleCol, artistCol, albumCol, genreCol, priceCol, stockCol);
 
         Button addBtn = new Button("Add Track");
         addBtn.setOnAction(e -> showTrackDialog(null));
@@ -507,6 +511,16 @@ public class AdminMainController {
             final int idx = i;
             TableColumn<String[], String> col = new TableColumn<>(headers[i]);
             col.setCellValueFactory(p -> new SimpleStringProperty(p.getValue()[idx]));
+            if (i == 0 || i == 5) { // order ID (index 0) and total (index 5) sort numerically
+                col.setComparator((a, b) -> {
+                    try {
+                        return Double.compare(Double.parseDouble(a), Double.parseDouble(b));
+                    }
+                    catch (NumberFormatException e) {
+                        return a.compareTo(b);
+                    }
+                });
+            }
             orderTable.getColumns().add(col);
         }
 
