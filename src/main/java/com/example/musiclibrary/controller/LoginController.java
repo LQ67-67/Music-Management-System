@@ -72,6 +72,13 @@ public class LoginController {
             stage.setMinWidth(900);
             stage.setMinHeight(620);
             stage.setResizable(true);
+            stage.setWidth(1280); // make sure the window is always 1280*864
+            stage.setHeight(864);
+            /* because the program used to be like
+            When user first launch the → app, program should set 1280×864 → to log in and display ✓
+            But Logout → setWidth(LOGIN_SCENE_WIDTH) / setHeight(LOGIN_SCENE_HEIGHT) → stage is shrunk
+            Login again → LoginController.handleLogin() only sets setMinWidth/MinHeight, no setWidth(1280) / setHeight(864) -> interface keeps the Login small ✗
+             */
             stage.centerOnScreen();
 
         } catch (SQLException e) {
