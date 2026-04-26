@@ -24,7 +24,7 @@ public class OrderServiceTest {
     @Test
     public void testCreateOrder() {
         try {
-            // Create a test track
+            // test track
             Track track = new Track();
             track.setTitle("Order Test Track");
             track.setArtist("Test Artist");
@@ -32,9 +32,9 @@ public class OrderServiceTest {
             track.setGenre("Test");
             track.setPrice(new BigDecimal("10.00"));
             track.setStockQty(20);
-            int trackId = trackDao.create(track);
+            int trackId = trackDao.create(track); // create track and get ID
 
-            // Create order items
+            // order items
             List<OrderItem> items = new ArrayList<>();
             OrderItem item = new OrderItem();
             item.setTrackId(trackId);
@@ -43,12 +43,12 @@ public class OrderServiceTest {
             item.setLineTotal(new BigDecimal("20.00"));
             items.add(item);
 
-            // Create order
+            // order
             Order createdOrder = orderService.createOrder(1, 1, items, "Test City");
             assertNotNull(createdOrder);
             assertTrue(createdOrder.getId() > 0);
 
-            // Verify order was created
+            // verify order was created or not
             Order order = orderDao.findById(createdOrder.getId());
             assertNotNull(order);
             assertEquals("PENDING", order.getStatus());
@@ -65,7 +65,7 @@ public class OrderServiceTest {
     @Test
     public void testCreateOrderWithInsufficientStock() {
         try {
-            // Create a test track with low stock
+            // create test track with low stock
             Track track = new Track();
             track.setTitle("Low Stock Track");
             track.setArtist("Test Artist");
@@ -75,7 +75,7 @@ public class OrderServiceTest {
             track.setStockQty(1);
             int trackId = trackDao.create(track);
 
-            // Create order items with more quantity than stock
+            // create order items with more quantity than stock
             List<OrderItem> items = new ArrayList<>();
             OrderItem item = new OrderItem();
             item.setTrackId(trackId);
@@ -84,13 +84,10 @@ public class OrderServiceTest {
             item.setLineTotal(new BigDecimal("25.00"));
             items.add(item);
 
-            // Should throw exception
             assertThrows(IllegalArgumentException.class, () -> {
-                orderService.createOrder(1, 1, items, null);
+                orderService.createOrder(1, 1, items, null); // should throw exception
             });
-
-            // Clean up
-            trackDao.delete(trackId);
+            trackDao.delete(trackId); // clean up
         } catch (SQLException e) {
             fail("Database error: " + e.getMessage());
         }

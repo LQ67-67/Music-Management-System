@@ -9,13 +9,12 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class TrackDaoTest {
-
     private final TrackDao trackDao = new TrackDao();
 
     @Test
     public void testFindAllActive() {
         try {
-            List<Track> tracks = trackDao.findAllActive();
+            List<Track> tracks = trackDao.findAllActive(); // only active tracks
             assertNotNull(tracks);
             assertTrue(tracks.size() > 0);
         } catch (SQLException e) {
@@ -35,11 +34,11 @@ public class TrackDaoTest {
             track.setStockQty(10);
 
             int id = trackDao.create(track);
-            assertTrue(id > 0);
+            assertTrue(id > 0); // check that an ID was returned
 
             Track found = trackDao.findById(id);
             assertNotNull(found);
-            assertEquals("Test Track", found.getTitle());
+            assertEquals("Test Track", found.getTitle()); // check if the title matches
         } catch (SQLException e) {
             fail("Database error: " + e.getMessage());
         }
@@ -63,7 +62,7 @@ public class TrackDaoTest {
             trackDao.update(track);
 
             Track updated = trackDao.findById(id);
-            assertEquals(new BigDecimal("10.00"), updated.getPrice());
+            assertEquals(new BigDecimal("10.00"), updated.getPrice()); // check if the price was updated
         } catch (SQLException e) {
             fail("Database error: " + e.getMessage());
         }
@@ -84,7 +83,7 @@ public class TrackDaoTest {
             trackDao.delete(id);
 
             Track deleted = trackDao.findById(id);
-            assertNotNull(deleted);
+            assertNotNull(deleted); // the track should still exist in the database, but it should be marked as inactive
             assertFalse(deleted.isActive());
         } catch (SQLException e) {
             fail("Database error: " + e.getMessage());

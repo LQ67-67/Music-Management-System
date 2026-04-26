@@ -8,7 +8,6 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class CustomerDaoTest {
-
     private final CustomerDao customerDao = new CustomerDao();
 
     @Test
@@ -16,7 +15,7 @@ public class CustomerDaoTest {
         try {
             List<Customer> customers = customerDao.findAll();
             assertNotNull(customers);
-            assertTrue(customers.size() > 0);
+            assertTrue(customers.size() > 0); // assume there are customers in the database
         } catch (SQLException e) {
             fail("Database error: " + e.getMessage());
         }
@@ -32,10 +31,10 @@ public class CustomerDaoTest {
             customer.setCity("Test City");
 
             int id = customerDao.create(customer);
-            assertTrue(id > 0);
+            assertTrue(id > 0); // check that an ID was returned
 
             List<Customer> customers = customerDao.findAll();
-            assertTrue(customers.stream().anyMatch(c -> c.getName().equals("Test Customer")));
+            assertTrue(customers.stream().anyMatch(c -> c.getName().equals("Test Customer"))); // check that the new customer is in the list
         } catch (SQLException e) {
             fail("Database error: " + e.getMessage());
         }
@@ -57,7 +56,7 @@ public class CustomerDaoTest {
             customerDao.update(customer);
 
             List<Customer> customers = customerDao.findAll();
-            Customer updated = customers.stream().filter(c -> c.getId() == id).findFirst().orElse(null);
+            Customer updated = customers.stream().filter(c -> c.getId() == id).findFirst().orElse(null); // find the updated customer
             assertNotNull(updated);
             assertEquals("New City", updated.getCity());
         } catch (SQLException e) {

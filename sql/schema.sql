@@ -1,5 +1,4 @@
 -- Music Library Management System - MySQL Schema
--- Coursework: COMP1322 Sem2
 
 -- CREATE DATABASE music_library CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -12,7 +11,7 @@ DROP TABLE IF EXISTS tracks;
 DROP TABLE IF EXISTS customers;
 DROP TABLE IF EXISTS users;
 
--- User table: contains regular users and administrators
+-- user table with regular users and administrators
 CREATE TABLE users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(50) NOT NULL UNIQUE,
@@ -21,7 +20,7 @@ CREATE TABLE users (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- Customer table (can be associated with users or used separately)
+-- customer table (can be associated with users or used separately)
 CREATE TABLE customers (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
@@ -31,7 +30,7 @@ CREATE TABLE customers (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- musicTrackMasterData
+-- music track master data
 CREATE TABLE tracks (
     id INT AUTO_INCREMENT PRIMARY KEY,
     title VARCHAR(200) NOT NULL,
@@ -45,7 +44,7 @@ CREATE TABLE tracks (
     updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP
 );
 
--- orderMasterTable
+-- order master table
 CREATE TABLE orders (
     id INT AUTO_INCREMENT PRIMARY KEY,
     customer_id INT NOT NULL,
@@ -68,7 +67,7 @@ CREATE TABLE orders (
 -- change the status column to a string with a maximum length of 20
 ALTER TABLE orders MODIFY status VARCHAR(20) DEFAULT 'PENDING';
 
--- orderSchedule
+-- order schedule
 CREATE TABLE order_items (
     id INT AUTO_INCREMENT PRIMARY KEY,
     order_id INT NOT NULL,
@@ -86,23 +85,23 @@ CREATE TABLE order_items (
 
 SET FOREIGN_KEY_CHECKS = 1;
 
--- basicTestData
+-- basic test data
 INSERT INTO users (username, password_hash, role) VALUES
 ('admin', 'admin', 'ADMIN'),
 ('user1', 'user1', 'USER');
 
 INSERT INTO customers (name, email, phone, city) VALUES
-('Alice', 'alice@example.com', '012-3456789', 'Kuala Lumpur'),
-('Bob', 'bob@example.com', '013-9876543', 'Penang');
+('Skim', 'skim@gmail.com', '012-3456789', 'Kuala Lumpur'),
+('Lando Norris', 'norries@soton.ac.uk', '013-9876543', 'Penang');
 
 INSERT INTO tracks (title, artist, album, genre, price, stock_qty) VALUES
-('1. Until Tomorrow''s Twilight (明日、夕暮れまで)', '北川勝利', 'ARIA The OVA ~ARIETTA~', 'Anime',  3.50, 100),
+('1. Until Tomorrow''s Twilight', '北川勝利', 'ARIA The OVA ~ARIETTA~', 'Anime',  3.50, 100),
 ('2. Nagisa (なぎさ)', 'Key Sound Team', 'CLANNAD ORIGINAL SOUNDTRACK', 'Anime', 4.20, 80),
-('3. The Day I Waited for the Wind (風を待った日)', 'Key Sounds Label', 'Kanon', 'Anime', 5.00, 50),
+('3. The Day I Waited for the Wind', 'Key Sounds Label', 'Kanon', 'Anime', 5.00, 50),
 ('4. Bad Apple', 'Touhou Project game', 'Touhou', 'Remix', 6.00, 67),
 ('5. Moon Light', 'Fred Capozio', 'Moon Light', 'Piano', 7.00, 40),
-('6. The Promise of the Dandelion (蒲公英的约定)', 'Jay Chou', 'I am busy', 'Piano', 15.00, 100),
+('6. The Promise of the Dandelion', 'Jay Chou', 'I am busy', 'Piano', 15.00, 100),
 ('7. Schubert''s Serenade (Ständchen)', 'Franz Schubert', 'Schwanengesang', 'Classics', 10.00, 70),
-('8. Affections Touching Across Time (犬夜叉 時代を越える想い)', 'Kaoru Wada', 'Inuyasha', 'Piano', 15.00, 100),
-('9. Ievan Polkka (甩葱歌)', 'Hatsune Miku', 'Ievan Polkka', 'Electronic music', 8.00, 40),
+('8. Affections Touching Across Time', 'Kaoru Wada', 'Inuyasha', 'Piano', 15.00, 100),
+('9. Ievan Polkka', 'Hatsune Miku', 'Ievan Polkka', 'Electronic music', 8.00, 40),
 ('10. Ariga Thesis','MUYKKE','Ariga Thesis','Remix', 5.20, 100);

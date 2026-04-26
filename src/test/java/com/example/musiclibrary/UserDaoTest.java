@@ -13,9 +13,9 @@ public class UserDaoTest {
     @Test
     public void testFindByUsername() {
         try {
-            User user = userDao.findByUsername("admin");
+            User user = userDao.findByUsername("admin"); // new admin
             assertNotNull(user);
-            assertEquals("ADMIN", user.getRole());
+            assertEquals("ADMIN", user.getRole()); // check that the admin user has the correct role
         } catch (SQLException e) {
             fail("Database error: " + e.getMessage());
         }
@@ -25,12 +25,12 @@ public class UserDaoTest {
     public void testCreate() {
         try {
             String username = "testuser_" + System.currentTimeMillis();
-            int id = userDao.create(username, "testpass", "USER");
+            int id = userDao.create(username, "testpass", "USER"); // new user and get the ID
             assertTrue(id > 0);
 
             User user = userDao.findByUsername(username);
             assertNotNull(user);
-            assertEquals("USER", user.getRole());
+            assertEquals("USER", user.getRole()); // check that the new user has the correct role
         } catch (SQLException e) {
             fail("Database error: " + e.getMessage());
         }
@@ -40,9 +40,9 @@ public class UserDaoTest {
     public void testCreateDuplicateUsername() {
         try {
             String duplicateUsername = "duplicate_" + System.currentTimeMillis();
-            userDao.create(duplicateUsername, "pass1", "USER");
+            userDao.create(duplicateUsername, "pass1", "USER"); // user
             assertThrows(SQLException.class, () -> {
-                userDao.create(duplicateUsername, "pass2", "USER");
+                userDao.create(duplicateUsername, "pass2", "USER"); // attempt to create another user with the same username, should throw an exception
             });
         } catch (SQLException e) {
             fail("Database error: " + e.getMessage());

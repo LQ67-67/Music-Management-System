@@ -17,7 +17,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class OrderService {
-
     // create new order with cart items
     public Order createOrder(int customerId, int userId, List<OrderItem> cartItems, String shippingCity) throws SQLException {
         if (customerId <= 0 || userId <= 0) {
@@ -49,24 +48,24 @@ public class OrderService {
                         throw new IllegalArgumentException("Invalid quantity for track " + track.getTitle());
                     }
 
-                    BigDecimal price = track.getPrice();
+                    BigDecimal price = track.getPrice(); // get current price from database
                     if (price == null) {
                         throw new IllegalArgumentException("Track price is missing for track " + track.getTitle());
                     }
 
-                    BigDecimal lineTotal = price.multiply(BigDecimal.valueOf(item.getQuantity()));
+                    BigDecimal lineTotal = price.multiply(BigDecimal.valueOf(item.getQuantity())); // calculate line total
                     item.setUnitPrice(price);
                     item.setLineTotal(lineTotal);
                     total = total.add(lineTotal);
                     itemsToInsert.add(item);
 
-                    updateTrackStock(conn, track.getId(), track.getStockQty() - item.getQuantity());
+                    updateTrackStock(conn, track.getId(), track.getStockQty() - item.getQuantity()); // update stock in database
                 }
 
                 Order order = new Order();
                 order.setCustomerId(customerId);
                 order.setUserId(userId);
-                order.setOrderDate(LocalDateTime.now());
+                order.setOrderDate(LocalDateTime.now()); // set order date to current time
                 order.setStatus("PENDING");
                 order.setTotalAmount(total);
                 order.setShippingCity(shippingCity);
@@ -96,7 +95,7 @@ public class OrderService {
             ps.setInt(1, trackId);
             try (ResultSet rs = ps.executeQuery()) {
                 if (!rs.next()) {
-                    return null;
+                    return null; // track not found
                 }
 
                 Track t = new Track();
@@ -116,11 +115,11 @@ public class OrderService {
     private void updateTrackStock(Connection conn, int trackId, int newStock) throws SQLException {
         String sql = "UPDATE tracks SET stock_qty = ? WHERE id = ?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setInt(1, newStock);
-            ps.setInt(2, trackId);
+            ps.setInt(1, newStock); // set new stock quantity
+            ps.setInt(2, trackId); // set track ID
             int updatedRows = ps.executeUpdate();
             if (updatedRows != 1) {
-                throw new SQLException("Failed to update stock for track: " + trackId);
+                throw new SQLException("Failed to update stock for track: " + trackId); // ensure exactly one row was updated
             }
         }
     }
@@ -128,17 +127,17 @@ public class OrderService {
     private int insertOrder(Connection conn, Order order) throws SQLException {
         String sql = "INSERT INTO orders (customer_id, user_id, order_date, status, total_amount, shipping_city) VALUES (?, ?, ?, ?, ?, ?)";
         try (PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-            ps.setInt(1, order.getCustomerId());
-            ps.setInt(2, order.getUserId());
-            ps.setTimestamp(3, Timestamp.valueOf(order.getOrderDate()));
-            ps.setString(4, order.getStatus());
-            ps.setBigDecimal(5, order.getTotalAmount());
-            ps.setString(6, order.getShippingCity());
-            ps.executeUpdate();
+            ps.setInt(1, order.getCustomerId()); // set customer ID
+            ps.setInt(2, order.getUserId()); // set user ID
+            ps.setTimestamp(3, Timestamp.valueOf(order.getOrderDate())); // set order date as timestamp
+            ps.setString(4, order.getStatus()); // set order status
+            ps.setBigDecimal(5, order.getTotalAmount()); // set total amount
+            ps.setString(6, order.getShippingCity()); // set shipping city
+            ps.executeUpdate(); // execute insert statement
 
             try (ResultSet rs = ps.getGeneratedKeys()) {
                 if (rs.next()) {
-                    return rs.getInt(1);
+                    return rs.getInt(1); // return generated order ID
                 }
             }
         }
@@ -149,14 +148,14 @@ public class OrderService {
         String sql = "INSERT INTO order_items (order_id, track_id, quantity, unit_price, line_total) VALUES (?, ?, ?, ?, ?)";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             for (OrderItem item : items) {
-                ps.setInt(1, item.getOrderId());
-                ps.setInt(2, item.getTrackId());
-                ps.setInt(3, item.getQuantity());
-                ps.setBigDecimal(4, item.getUnitPrice());
-                ps.setBigDecimal(5, item.getLineTotal());
-                ps.addBatch();
+                ps.setInt(1, item.getOrderId()); // set order ID
+                ps.setInt(2, item.getTrackId()); // set track ID
+                ps.setInt(3, item.getQuantity()); // set quantity
+                ps.setBigDecimal(4, item.getUnitPrice()); // set unit price
+                ps.setBigDecimal(5, item.getLineTotal()); // set line total
+                ps.addBatch(); // add to batch
             }
-            ps.executeBatch();
+            ps.executeBatch(); // execute batch insert
         }
     }
 }
