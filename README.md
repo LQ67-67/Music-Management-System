@@ -179,6 +179,49 @@ mvn test
 - The current DB configuration is written dead in code, so it is recommended to change it to an environment variable or configuration file. 
 - Upload resources directly to 'src/main/resources', which is more suitable for development environments. If you need to publish, it is recommended to have a separate external storage directory. 
 
+## Administrator Notes: Soft Delete vs. Physical Delete
+
+### The Issue
+
+The `delete()` method currently performs a **soft delete** – it sets `is_active = 0` instead of removing the row from the database. This is by design, but may cause confusion if you expect records to be permanently erased.
+
+### Two Options
+
+Depending on your requirements, choose one of the following approaches:
+
+#### Option A: Physical Delete (Permanent Removal)
+
+The row is deleted entirely from the database. And this method is already implemented in the `TrackDao` class, but it is not currently used in the application.
+If you want to switch to physical deletion, you can replace the `delete()` method with the following code:
+
+```java
+public void delete(int trackId) throws SQLException {
+    String sql = "DELETE FROM tracks WHERE id = ?"; // directly delete the record
+    Connection conn = DBConnectionManager.getConnection();
+    PreparedStatement ps = conn.prepareStatement(sql);
+    ps.setInt(1, trackId);
+    ps.executeUpdate();
+    ps.close();
+    conn.close();
+}
+```
+
+- ✅ Frees up storage immediately
+
+- ❌ Cannot recover deleted data
+
+- ❌ May break foreign key references (e.g., purchased orders linked to this track)
+
+#### Option B: Keep Soft Delete (Current Behavior)
+The row remains in the database with is_active = 0.
+findAllActive() queries only is_active = 1, so the record does not appear in the UI, but it is preserved in the database.
+
+- ✅ Preserves historical data (e.g., orders that include this track)
+
+- ✅ Allows potential restoration (“undo”) if needed
+
+- ❌ Database retains “inactive” rows indefinitely
+
 ## References
 - JavaFX Documentation: https://openjfx.io/
 - MySQL Connector/J Documentation: https://dev.mysql.com/doc/connector-j/8.

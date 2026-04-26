@@ -165,4 +165,21 @@ public class TrackDao {
         ps.close();
         conn.close();
     }
+
+    /* this method is used for real physical deletion (directly deleting that line from the database)
+    because this previous codes are used for soft deletion which means we still keep the data in databases even though we delete from the databases
+    the database keeps the record, but the UI doesn't show it
+    but if u want to really delete the record from the database, u can use this method,
+    but be careful when using it, because once deleted, it cannot be recovered
+
+    public void delete(int trackId) throws SQLException {
+        String sql = "DELETE FROM tracks WHERE id = ?"; // directly delete the track from the database
+        Connection conn = DBConnectionManager.getConnection();
+        PreparedStatement ps = conn.prepareStatement(sql);
+        ps.setInt(1, trackId);
+        ps.executeUpdate();
+        ps.close();
+        conn.close();
+    }
+     */
 }

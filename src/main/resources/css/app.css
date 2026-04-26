@@ -41,18 +41,17 @@ Button {
     -fx-underline: true;
 }
 
-/* Table cell styles */
+/* table cell styles */
 .table-cell {
     -fx-alignment: center;
     -fx-padding: 8px;
 }
 
-/* Image column styles */
+/* image column styles */
 .table-row-cell {
     -fx-cell-size: 96px;
 }
 
-/* Image view styles */
 .table-view .image-view {
     -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 5, 0, 0, 2);
 }
