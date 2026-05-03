@@ -23,33 +23,128 @@ public class LoginController {
 
     @FXML private TextField usernameField;
     @FXML private PasswordField passwordField;
+    @FXML private TextField passwordShowField;
+    @FXML private Button togglePasswordBtn;
     @FXML private Label errorLabel;
     @FXML private Label infoLabel;
+    @FXML private Label passwordHintLabel;
+    @FXML private Label requirementsLabel;
 
     private UserDao userDao;
+    private boolean passwordVisible = false;
 
     @FXML
     private void initialize() {
         userDao = new UserDao();
 
-        usernameField.setTextFormatter(new TextFormatter<>(change -> change.getControlNewText().length() <= USERNAME_MAX_LEN ? change : null )); // limit 20 characters can be typed in the username field
-        passwordField.setTextFormatter(new TextFormatter<>(change -> change.getControlNewText().length() <= PASSWORD_MAX_LEN ? change : null)); // limit 30 characters
+        usernameField.setTextFormatter(new TextFormatter<>(change ->
+            change.getControlNewText().length() <= USERNAME_MAX_LEN ? change : null));
+        passwordField.setTextFormatter(new TextFormatter<>(change ->
+            change.getControlNewText().length() <= PASSWORD_MAX_LEN ? change : null));
+
+        passwordShowField.setVisible(false);
+        passwordShowField.setManaged(false);
+
+        // Setup password field listener for real-time validation
+        passwordField.textProperty().addListener((obs, oldVal, newVal) -> {
+            validatePasswordRequirements(newVal);
+            if (passwordVisible) {
+                passwordShowField.setText(newVal);
+            }
+        });
+
+        passwordShowField.textProperty().addListener((obs, oldVal, newVal) -> {
+            if (passwordVisible) {
+                passwordField.setText(newVal);
+            }
+        });
+
+        // Press-and-hold reveal: show while pressing, hide when released.
+        togglePasswordBtn.setOnMousePressed(e -> showPasswordTemporarily());
+        togglePasswordBtn.setOnMouseReleased(e -> hidePassword());
+        togglePasswordBtn.setOnMouseExited(e -> hidePassword());
+    }
+
+    /**
+     * Validate password requirements in real-time (display hints only)
+     */
+    private void validatePasswordRequirements(String password) {
+        if (password == null || password.isEmpty()) {
+            requirementsLabel.setText("");
+            passwordHintLabel.setText("");
+            return;
+        }
+
+        boolean hasUppercase = password.matches(".*[A-Z].*");
+        boolean hasLowercase = password.matches(".*[a-z].*");
+        boolean hasDigit = password.matches(".*\\d.*");
+
+        StringBuilder requirements = new StringBuilder();
+
+        if (!hasUppercase) requirements.append("✗ Uppercase (A-Z)  ");
+        else requirements.append("✓ Uppercase  ");
+
+        if (!hasLowercase) requirements.append("✗ Lowercase (a-z)  ");
+        else requirements.append("✓ Lowercase  ");
+
+        if (!hasDigit) requirements.append("✗ Digit (0-9)");
+        else requirements.append("✓ Digit");
+
+        requirementsLabel.setText(requirements.toString());
+
+        if (!hasUppercase || !hasLowercase || !hasDigit) {
+            requirementsLabel.setStyle("-fx-text-fill: #d03238;");
+            passwordHintLabel.setText("Password could be stronger");
+            passwordHintLabel.setStyle("-fx-text-fill: #868685; -fx-font-weight: 400;");
+        } else {
+            requirementsLabel.setStyle("-fx-text-fill: #054d28;");
+            passwordHintLabel.setText("✓ Password strength: strong");
+            passwordHintLabel.setStyle("-fx-text-fill: #054d28; -fx-font-weight: 600;");
+        }
+    }
+
+    private void showPasswordTemporarily() {
+        if (passwordVisible) {
+            return;
+        }
+        passwordVisible = true;
+        passwordShowField.setText(passwordField.getText());
+        passwordField.setVisible(false);
+        passwordField.setManaged(false);
+        passwordShowField.setVisible(true);
+        passwordShowField.setManaged(true);
+        passwordShowField.positionCaret(passwordShowField.getText().length());
+        togglePasswordBtn.setText("🙈");
+    }
+
+    private void hidePassword() {
+        if (!passwordVisible) {
+            return;
+        }
+        passwordField.setText(passwordShowField.getText());
+        passwordShowField.setVisible(false);
+        passwordShowField.setManaged(false);
+        passwordField.setVisible(true);
+        passwordField.setManaged(true);
+        passwordField.positionCaret(passwordField.getText().length());
+        togglePasswordBtn.setText("👁️");
+        passwordVisible = false;
     }
 
     @FXML
     private void handleLogin() {
         String username = usernameField.getText();
-        String password = passwordField.getText();
+        String password = passwordVisible ? passwordShowField.getText() : passwordField.getText();
 
         if (username.isEmpty() || password.isEmpty()) {
-            errorLabel.setText("Please enter username and password."); // if either field is empty, show error
+            errorLabel.setText("Please enter username and password.");
             return;
         }
 
         try {
             User user = userDao.findByUsername(username);
             if (user == null || !password.equals(user.getPasswordHash())) {
-                errorLabel.setText("Wrong username or password."); // if user not found or password doesn't match, show error
+                errorLabel.setText("Wrong username or password.");
                 return;
             }
 
@@ -57,28 +152,21 @@ public class LoginController {
             errorLabel.setText("");
             infoLabel.setText("");
 
-            Stage stage = (Stage) usernameField.getScene().getWindow(); // switch to the main scene directly here without a helper method
+            Stage stage = (Stage) usernameField.getScene().getWindow();
             URL resource;
 
             if (SessionManager.isAdmin()) {
                 resource = getClass().getResource("/fxml/AdminMainView.fxml");
-                stage.setScene(new Scene(FXMLLoader.load(resource))); // load the admin main view
+                stage.setScene(new Scene(FXMLLoader.load(resource)));
             } else {
                 resource = getClass().getResource("/fxml/UserMainView.fxml");
                 stage.setScene(new Scene(FXMLLoader.load(resource)));
             }
-            stage.centerOnScreen(); // window will be centered on the screen after loading
-
             stage.setMinWidth(900);
             stage.setMinHeight(620);
             stage.setResizable(true);
-            stage.setWidth(1280); // make sure the window is always 1280*864
+            stage.setWidth(1280);
             stage.setHeight(864);
-            /* because the program used to be like
-            When user first launch the → app, program should set 1280×864 → to log in and display ✓
-            But Logout → setWidth(LOGIN_SCENE_WIDTH) / setHeight(LOGIN_SCENE_HEIGHT) → stage is shrunk
-            Login again → LoginController.handleLogin() only sets setMinWidth/MinHeight, no setWidth(1280) / setHeight(864) -> interface keeps the Login small ✗
-             */
             stage.centerOnScreen();
 
         } catch (SQLException e) {
@@ -106,49 +194,63 @@ public class LoginController {
         grid.setHgap(14);
         grid.setVgap(14);
         grid.setPadding(new Insets(20));
-        grid.add(new Label("Username:"),0,0); grid.add(newUsernameField,1,0);
-        grid.add(new Label("Password:"),0,1); grid.add(newPasswordField,1,1);
-        grid.add(new Label("Confirm Password:"),0,2); grid.add(confirmField,1,2);
+        grid.add(new Label("Username:"), 0, 0);
+        grid.add(newUsernameField, 1, 0);
+        grid.add(new Label("Password:"), 0, 1);
+        grid.add(newPasswordField, 1, 1);
+        grid.add(new Label("Confirm:"), 0, 2);
+        grid.add(confirmField, 1, 2);
+
+        Label validationLabel = new Label("");
+        validationLabel.setStyle("-fx-text-fill: red;");
 
         Button registerBtn = new Button("Register");
+        registerBtn.setStyle("-fx-background-color: #9fe870; -fx-text-fill: #163300; -fx-padding: 8 20; -fx-border-radius: 9999; -fx-background-radius: 9999; -fx-font-weight: 600;");
         registerBtn.setOnAction(event -> {
             String u = newUsernameField.getText();
             String p = newPasswordField.getText();
+            String confirm = confirmField.getText();
 
             if (u.isEmpty() || p.isEmpty()) {
-                Alert alert = new Alert(Alert.AlertType.ERROR, "Username and password cannot be empty.");
-                alert.initOwner(dialog);
-                alert.setHeaderText(null);
-                alert.showAndWait();
+                validationLabel.setText("Username and password cannot be empty.");
                 return;
             }
 
-            if (!p.equals(confirmField.getText())) {
-                Alert alert = new Alert(Alert.AlertType.ERROR, "Passwords do not match.");
-                alert.initOwner(dialog);
-                alert.setHeaderText(null);
-                alert.showAndWait();
+            if (u.length() > USERNAME_MAX_LEN) {
+                validationLabel.setText("Username cannot exceed " + USERNAME_MAX_LEN + " characters.");
+                return;
+            }
+
+            if (p.length() > PASSWORD_MAX_LEN) {
+                validationLabel.setText("Password cannot exceed " + PASSWORD_MAX_LEN + " characters.");
+                return;
+            }
+
+            if (!p.equals(confirm)) {
+                validationLabel.setText("Passwords do not match.");
                 return;
             }
 
             try {
+                hidePassword();
                 userDao.create(u, p, "USER");
                 dialog.close();
 
-                Alert successAlert = new Alert(Alert.AlertType.INFORMATION, "User '" + u + "' registered!");
+                Alert successAlert = new Alert(Alert.AlertType.INFORMATION, "User '" + u + "' registered successfully!");
+                successAlert.setHeaderText("Success");
                 successAlert.showAndWait();
-                infoLabel.setText("Registration successful! Please login.");
+                infoLabel.setText("Registration successful! Please log in.");
 
             } catch (SQLException ex) {
-                String errorMsg = ex.getMessage().contains("Duplicate entry") ? "Username already exists." : "Registration failed: " + ex.getMessage(); // if the error message contains "Duplicate entry", it means the username already exists
-                Alert alert = new Alert(Alert.AlertType.ERROR, errorMsg);
-                alert.initOwner(dialog);
-                alert.setHeaderText(null);
-                alert.showAndWait();
+                String errorMsg = ex.getMessage() != null && ex.getMessage().contains("Duplicate entry")
+                    ? "Username already exists."
+                    : "Registration failed: " + ex.getMessage();
+                validationLabel.setText(errorMsg);
             }
         });
 
         Button cancelBtn = new Button("Cancel");
+        cancelBtn.setStyle("-fx-padding: 8 20;");
         cancelBtn.setOnAction(event -> dialog.close());
 
         HBox buttons = new HBox(16);
@@ -157,10 +259,13 @@ public class LoginController {
 
         VBox vbox = new VBox(16);
         vbox.setPadding(new Insets(20));
-        vbox.getChildren().addAll(grid, buttons);
+        vbox.getChildren().addAll(grid, validationLabel, buttons);
 
-        dialog.setScene(new Scene(vbox, 500, 300));
+        Scene scene = new Scene(vbox, 450, 300);
+        scene.getStylesheets().add(getClass().getResource("/css/app.css").toExternalForm());
+        dialog.setScene(scene);
         dialog.centerOnScreen();
         dialog.showAndWait();
     }
 }
+

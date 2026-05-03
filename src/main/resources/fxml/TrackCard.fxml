@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.FlowPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox fx:controller="com.example.musiclibrary.controller.TrackCardController"
+      xmlns="http://javafx.com/javafx"
+      xmlns:fx="http://javafx.com/fxml"
+      styleClass="track-card"
+      prefWidth="268"
+      prefHeight="398"
+      spacing="10">
+    <padding>
+        <Insets top="16" right="16" bottom="16" left="16"/>
+    </padding>
+
+    <!-- Track Cover Image -->
+    <ImageView fx:id="trackImage"
+               fitWidth="236"
+               fitHeight="182"
+               preserveRatio="true"
+               smooth="true"/>
+
+    <!-- Track Info Section -->
+    <VBox spacing="6" VBox.vgrow="ALWAYS">
+        <!-- Title -->
+        <Label fx:id="titleLabel"
+               text="Track Title"
+               styleClass="card-title"
+               wrapText="true"
+               maxWidth="236"/>
+
+        <!-- Artist -->
+        <Label fx:id="artistLabel"
+               text="Artist Name"
+               styleClass="caption text-muted"
+               wrapText="true"
+               maxWidth="236"/>
+
+        <!-- Album -->
+        <Label fx:id="albumLabel"
+               text="Album Name"
+               styleClass="caption"
+               wrapText="true"
+               maxWidth="236"
+               style="-fx-text-fill: #454745;"/>
+
+        <!-- Category tags -->
+        <FlowPane fx:id="categoryPane" hgap="6" vgap="6" prefWrapLength="236"/>
+    </VBox>
+
+    <!-- Counter + Footer: Price & Stock Badge -->
+    <HBox spacing="8" alignment="CENTER_LEFT" styleClass="track-counter">
+        <Button fx:id="decreaseButton" text="−" styleClass="counter-button" prefWidth="36"/>
+        <Label fx:id="quantityLabel" text="1" styleClass="counter-value"/>
+        <Button fx:id="increaseButton" text="+" styleClass="counter-button" prefWidth="36"/>
+    </HBox>
+
+    <HBox spacing="8" alignment="CENTER_LEFT">
+        <Label fx:id="priceLabel"
+               text="RM 0.00"
+               styleClass="body-semibold"
+               style="-fx-text-fill: #163300;"/>
+        <Button fx:id="stockButton"
+                text="In Stock"
+                styleClass="stock-badge"/>
+    </HBox>
+</VBox>
+

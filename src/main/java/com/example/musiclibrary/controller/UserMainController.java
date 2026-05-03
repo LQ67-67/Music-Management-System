@@ -4,6 +4,7 @@ import com.example.musiclibrary.MusicLibraryApp;
 import com.example.musiclibrary.dao.CustomerDao;
 import com.example.musiclibrary.dao.OrderDao;
 import com.example.musiclibrary.dao.TrackDao;
+import com.example.musiclibrary.dao.UserDao;
 import com.example.musiclibrary.model.Customer;
 import com.example.musiclibrary.model.Order;
 import com.example.musiclibrary.model.OrderItem;
@@ -11,26 +12,31 @@ import com.example.musiclibrary.model.Track;
 import com.example.musiclibrary.model.User;
 import com.example.musiclibrary.service.OrderService;
 import com.example.musiclibrary.session.SessionManager;
-import com.example.musiclibrary.util.TrackMediaResolver;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
+import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.image.ImageView;
+import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.stage.StageStyle;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 
 import java.math.BigDecimal;
 import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -39,106 +45,127 @@ public class UserMainController {
 
     @FXML private Label welcomeLabel;
     @FXML private TextField searchField;
-    @FXML private TableView<Track> trackTable;
-    @FXML private Spinner<Integer> quantitySpinner;
-    @FXML private TableColumn<Track, Track> colCover;
-    @FXML private TableColumn<Track, String> colTitle;
-    @FXML private TableColumn<Track, String> colArtist;
-    @FXML private TableColumn<Track, String> colGenre;
-    @FXML private TableColumn<Track, String> colPrice;
-    @FXML private TableColumn<Track, String> colStock;
+    @FXML private FlowPane trackGrid;
 
     private final ObservableList<Track> trackData = FXCollections.observableArrayList();
     private final ObservableList<OrderItem> cartItems = FXCollections.observableArrayList();
     private final CustomerDao customerDao = new CustomerDao();
     private final OrderDao orderDao = new OrderDao();
     private final TrackDao trackDao = new TrackDao();
+    private final UserDao userDao = new UserDao();
     private final OrderService orderService = new OrderService();
-    private SpinnerValueFactory.IntegerSpinnerValueFactory quantitySpinnerFactory;
+    private final Map<Integer, Integer> quantitySelections = new HashMap<>();
+
+    private Track selectedTrack = null;
+    private VBox selectedCardPane = null;
+    private TrackCardController selectedCardController = null;
+    private Stage overlayDialog;
 
     @FXML
     private void initialize() {
         if (SessionManager.getCurrentUser() != null) {
-            welcomeLabel.setText("Welcome, " + SessionManager.getCurrentUser().getUsername());
+            welcomeLabel.setText("Welcome, " + SessionManager.getCurrentUser().getUsername() + " ☀️");
         }
 
-        quantitySpinnerFactory = new SpinnerValueFactory.IntegerSpinnerValueFactory(1, 99, 1);
-        quantitySpinner.setValueFactory(quantitySpinnerFactory);
+        // Configure FlowPane
+        trackGrid.setHgap(12);
+        trackGrid.setVgap(12);
+        trackGrid.setPrefWrapLength(1180);
+        trackGrid.prefWrapLengthProperty().bind(trackGrid.widthProperty().subtract(24));
+        trackGrid.setMaxWidth(Double.MAX_VALUE);
 
-        // dynamically update the max quantity based on the selected track's stock
-        trackTable.getSelectionModel().selectedItemProperty().addListener((obs, oldSel, newSel) -> {
-            if (newSel != null) {
-                int maxStock = Math.max(1, newSel.getStockQty()); // ensure max is at least 1 to allow adding to cart even if stock is 0
-                quantitySpinnerFactory.setMax(maxStock); // update the spinner's max value to the selected track's stock quantity
-                if (quantitySpinner.getValue() > maxStock){
-                    quantitySpinnerFactory.setValue(maxStock); // if the current spinner value exceeds the new max, set it to the new max to prevent invalid quantity selection
-                }
-            }
-        });
-
-        setupTrackTableColumns();
-        trackTable.setItems(trackData);
+        // Setup the track grid
+        setupTrackGrid();
         loadAllTracks();
     }
 
-    private void setupTrackTableColumns() {
-        trackTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN); // make the table automatically expand to fill the width
+    private void setupTrackGrid() {
+        // Track data change listener
+        trackData.addListener((ListChangeListener<Track>) change -> {
+            refreshTrackGrid();
+        });
+    }
 
-        colCover.setCellValueFactory(d -> new SimpleObjectProperty<>(d.getValue()));
-        colCover.setCellFactory(col -> new TableCell<>() {
-            private final ImageView imageView = new ImageView();
-            @Override
-            protected void updateItem(Track item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setGraphic(null);
-                } else {
-                    imageView.setFitWidth(80); imageView.setFitHeight(80); imageView.setPreserveRatio(true);
-                    imageView.setImage(TrackMediaResolver.loadTrackImage(item, item.getId() + ".mp3")); // load the track's cover image; if fails return a default placeholder image
-                    setGraphic(imageView);
-                }
+    /**
+     * Refresh the track grid by reloading all track cards.
+     */
+    private void refreshTrackGrid() {
+        trackGrid.getChildren().clear();
+        selectedTrack = null;
+        selectedCardPane = null;
+        selectedCardController = null;
+
+        for (Track track : trackData) {
+            try {
+                FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/TrackCard.fxml"));
+                VBox cardPane = loader.load();
+                TrackCardController cardController = loader.getController();
+                cardController.setTrack(track);
+                cardController.setRootPane(cardPane);
+                cardController.setQuantity(quantitySelections.getOrDefault(track.getId(), 1));
+                cardController.setQuantityChangeListener(qty -> {
+                    quantitySelections.put(track.getId(), qty);
+                });
+                cardController.setPurchaseRequestListener(this::showPurchaseDialog);
+                cardController.setSelected(false);
+
+                // Handle card click for selection
+                cardPane.setOnMouseClicked(event -> selectTrack(track, cardPane, cardController));
+
+                trackGrid.getChildren().add(cardPane);
+            } catch (Exception e) {
+                LOGGER.log(Level.WARNING, "Failed to load track card", e);
             }
-        });
+        }
 
-        colTitle.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().getTitle())); // set the title column to display the track's title
+        syncSelectedCardQuantity();
+    }
 
-        // custom natural sorting so "Track 2" comes before "Track 10"
-        colTitle.setComparator((s1, s2) -> {
-            if (s1 == null) return s2 == null ? 0 : -1;
-            if (s2 == null) return 1;
-            String[] parts1 = s1.split("(?<=\\D)(?=\\d)|(?<=\\d)(?=\\D)");
-            String[] parts2 = s2.split("(?<=\\D)(?=\\d)|(?<=\\d)(?=\\D)");
-            for (int i = 0; i < Math.min(parts1.length, parts2.length); i++) {
-                String p1 = parts1[i], p2 = parts2[i];
-                if (p1.matches("\\d+") && p2.matches("\\d+")) {
-                    int cmp = Long.compare(Long.parseLong(p1), Long.parseLong(p2));
-                    if (cmp != 0) return cmp;
-                } else {
-                    int cmp = p1.compareToIgnoreCase(p2);
-                    if (cmp != 0) return cmp;
-                }
+    /**
+     * Select a track by clicking on its card.
+     */
+    private void selectTrack(Track track, VBox cardPane, TrackCardController cardController) {
+        // Deselect previous selection
+        if (selectedCardPane != null) {
+            selectedCardPane.getStyleClass().remove("selected");
+        }
+
+        if (selectedCardController != null) {
+            selectedCardController.setSelected(false);
+        }
+
+        // Select new track
+        selectedTrack = track;
+        selectedCardPane = cardPane;
+        selectedCardController = cardController;
+        selectedCardController.setSelected(true);
+
+        // Update quantity spinner
+        syncSelectedCardQuantity();
+    }
+
+    /**
+     * Keep the selected card quantity within the available stock.
+     */
+    private void syncSelectedCardQuantity() {
+        if (selectedTrack != null) {
+            int maxStock = Math.max(1, selectedTrack.getStockQty());
+            int desired = Math.max(1, Math.min(quantitySelections.getOrDefault(selectedTrack.getId(), 1), maxStock));
+            if (selectedCardController != null) {
+                selectedCardController.setQuantity(desired);
             }
-            return Integer.compare(parts1.length, parts2.length);
-        });
-
-        colArtist.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().getArtist()));
-        colGenre.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().getGenre()));
-        colPrice.setCellValueFactory(d -> {
-            BigDecimal price = d.getValue().getPrice();
-            return new SimpleStringProperty(price == null ? "" : price.toPlainString());
-        });
-        colStock.setCellValueFactory(d -> new SimpleStringProperty(String.valueOf(d.getValue().getStockQty())));
+        }
     }
 
     @FXML
     public void handleEditProfile() {
-        try {
-            User currentUser = SessionManager.getCurrentUser();
-            if (currentUser == null) {
-                showError("Please log in to edit your profile.");
-                return;
-            }
+        User currentUser = SessionManager.getCurrentUser();
+        if (currentUser == null) {
+            showError("Please log in to edit your profile.");
+            return;
+        }
 
+        try {
             Customer existingCustomer = customerDao.findAll().stream()
                     .filter(c -> currentUser.getUsername().equalsIgnoreCase(c.getName()))
                     .findFirst().orElse(null);
@@ -146,70 +173,91 @@ public class UserMainController {
             if (existingCustomer == null) {
                 existingCustomer = new Customer();
                 existingCustomer.setName(currentUser.getUsername());
-                existingCustomer.setEmail(""); existingCustomer.setPhone(""); existingCustomer.setCity("");
+                existingCustomer.setEmail("");
+                existingCustomer.setPhone("");
+                existingCustomer.setCity("");
                 existingCustomer.setId(customerDao.create(existingCustomer));
             }
 
-            Stage dialog = new Stage();
-            dialog.initModality(Modality.APPLICATION_MODAL); // block interaction with other windows until this one is closed
-            dialog.setTitle("Edit My Profile");
+            Customer customerToUpdate = existingCustomer;
+            VBox form = new VBox(12);
+            form.getStyleClass().add("dialog-surface");
+            form.setPadding(new Insets(20));
+            form.setMaxWidth(520);
+
+            Label title = new Label("Edit Profile");
+            title.getStyleClass().add("display-sub");
 
             GridPane grid = new GridPane();
-            grid.setHgap(10); grid.setVgap(15); grid.setPadding(new Insets(20));
+            grid.getStyleClass().add("form-grid");
 
-            TextField nameField = new TextField(existingCustomer.getName());
-            TextField emailField = new TextField(existingCustomer.getEmail());
-            TextField phoneField = new TextField(existingCustomer.getPhone());
-            TextField cityField = new TextField(existingCustomer.getCity());
+            TextField usernameField = new TextField(currentUser.getUsername());
+            PasswordField passwordField = new PasswordField();
+            passwordField.setText(currentUser.getPasswordHash());
+            TextField emailField = new TextField(customerToUpdate.getEmail() == null ? "" : customerToUpdate.getEmail());
+            TextField phoneField = new TextField(customerToUpdate.getPhone() == null ? "" : customerToUpdate.getPhone());
+            TextField cityField = new TextField(customerToUpdate.getCity() == null ? "" : customerToUpdate.getCity());
 
-            grid.add(new Label("Username:"), 0, 0); grid.add(nameField, 1, 0);
-            grid.add(new Label("Email:"), 0, 1); grid.add(emailField, 1, 1);
-            grid.add(new Label("Phone:"), 0, 2); grid.add(phoneField, 1, 2);
-            grid.add(new Label("City:"), 0, 3); grid.add(cityField, 1, 3);
+            grid.add(new Label("Name / Username:"), 0, 0); grid.add(usernameField, 1, 0);
+            grid.add(new Label("Password:"), 0, 1); grid.add(passwordField, 1, 1);
+            grid.add(new Label("Email Address:"), 0, 2); grid.add(emailField, 1, 2);
+            grid.add(new Label("Phone:"), 0, 3); grid.add(phoneField, 1, 3);
+            grid.add(new Label("City:"), 0, 4); grid.add(cityField, 1, 4);
 
-            Button saveButton = new Button("Save Changes");
+            Label validation = new Label();
+            validation.getStyleClass().add("validation-error");
+
+            Button saveButton = new Button("Save");
+            saveButton.getStyleClass().add("wise-pill-primary");
             Button cancelButton = new Button("Cancel");
-
-            final Customer customerToUpdate = existingCustomer;
+            cancelButton.getStyleClass().add("wise-pill-secondary");
 
             saveButton.setOnAction(e -> {
-                String inputEmail = emailField.getText();
-                String inputPhone = phoneField.getText();
-                StringBuilder errors = new StringBuilder();
+                String username = usernameField.getText().trim();
+                String password = passwordField.getText();
+                String email = emailField.getText().trim();
+                String phone = phoneField.getText().trim();
+                String city = cityField.getText().trim();
 
-                if (inputEmail != null && !inputEmail.trim().isEmpty() // email format validation
-                        && !inputEmail.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$")) {
-                    errors.append("Invalid email format.\n");
+                if (username.isEmpty() || password.isEmpty()) {
+                    validation.setText("Name and password are required.");
+                    return;
                 }
-                if (inputPhone != null && !inputPhone.trim().isEmpty() // phone
-                        && !inputPhone.matches("^[0-9+\\-() ]{6,20}$")) {
-                    errors.append("Invalid phone number format.\n");
+                if (!email.isEmpty() && !email.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$")) {
+                    validation.setText("Invalid email format.");
+                    return;
                 }
-                if (errors.length() > 0) { // if there are validation errors, show them and do not proceed with saving
-                    showError(errors.toString().trim());
+                if (!phone.isEmpty() && !phone.matches("^[0-9+\\-() ]{6,20}$")) {
+                    validation.setText("Invalid phone number format.");
                     return;
                 }
 
-                customerToUpdate.setName(nameField.getText());
-                customerToUpdate.setEmail(inputEmail);
-                customerToUpdate.setPhone(inputPhone);
-                customerToUpdate.setCity(cityField.getText());
                 try {
+                    User updatedUser = new User(currentUser.getId(), username, password, currentUser.getRole());
+                    userDao.update(updatedUser);
+
+                    customerToUpdate.setName(username);
+                    customerToUpdate.setEmail(email);
+                    customerToUpdate.setPhone(phone);
+                    customerToUpdate.setCity(city);
                     customerDao.update(customerToUpdate);
-                    dialog.close();
+
+                    SessionManager.setCurrentUser(updatedUser);
+                    welcomeLabel.setText("Welcome, " + username + " ☀️");
+                    overlayDialog.close();
                 } catch (SQLException ex) {
                     LOGGER.log(Level.SEVERE, "Failed to save profile", ex);
-                    showError("Failed to save profile: " + ex.getMessage());
+                    validation.setText("Failed to save profile: " + ex.getMessage());
                 }
             });
 
-            cancelButton.setOnAction(e -> dialog.close());
+            cancelButton.setOnAction(e -> overlayDialog.close());
 
-            HBox buttonBox = new HBox(15, saveButton, cancelButton);
-            VBox mainLayout = new VBox(20, grid, buttonBox);
-            mainLayout.setPadding(new Insets(20));
-            dialog.setScene(new Scene(mainLayout, 400, 320));
-            dialog.showAndWait();
+            HBox actions = new HBox(12, saveButton, cancelButton);
+            actions.setAlignment(Pos.CENTER_RIGHT);
+            form.getChildren().addAll(title, grid, validation, actions);
+
+            showOverlayDialog(form, 600, 520);
 
         } catch (SQLException e) {
             LOGGER.log(Level.SEVERE, "Failed to load profile details", e);
@@ -223,7 +271,7 @@ public class UserMainController {
         try {
             trackData.setAll(keyword == null || keyword.isEmpty()
                     ? trackDao.findAllActive()
-                    : trackDao.searchActiveByKeyword(keyword.trim())); // if search field is empty, show all tracks; otherwise, show search results
+                    : trackDao.searchActiveByKeyword(keyword.trim()));
         } catch (SQLException e) {
             LOGGER.log(Level.SEVERE, "Search failed", e);
             showError("Failed to search tracks: " + e.getMessage());
@@ -232,48 +280,11 @@ public class UserMainController {
 
     @FXML
     private void handleAddToCart() {
-        Track sel = trackTable.getSelectionModel().getSelectedItem();
-        if (sel == null) {
-            showError("Please select a track.");
+        if (selectedTrack == null) {
+            showError("Please select a track from the grid.");
             return;
         }
-        if (sel.getStockQty() <= 0) {
-            showError("Track is out of stock.");
-            return;
-        }
-
-        int qty = quantitySpinner.getValue();
-
-        if (qty <= 0) {
-            showError("Please enter a positive integer for quantity."); // make sure the quantity is a valid positive number
-            return;
-        }
-        if (qty > sel.getStockQty()) {
-            showError("Not enough stock.");
-            return;
-        }
-
-        // check if the item is already in the cart and update it
-        for (OrderItem item : cartItems) {
-            if (item.getTrackId() == sel.getId()) {
-                int newQty = item.getQuantity() + qty; // add to existing quantity
-                if (newQty > sel.getStockQty()) {
-                    showError("Total quantity exceeds stock.");
-                    return;
-                }
-                item.setQuantity(newQty);
-                item.setLineTotal(sel.getPrice().multiply(BigDecimal.valueOf(newQty))); // update line total
-                showInfo("Added to cart. Total: " + newQty);
-                return;
-            }
-        }
-
-        OrderItem newItem = new OrderItem();
-        newItem.setTrackId(sel.getId()); newItem.setQuantity(qty);
-        newItem.setUnitPrice(sel.getPrice());
-        newItem.setLineTotal(sel.getPrice().multiply(BigDecimal.valueOf(qty))); // calculate line total
-        cartItems.add(newItem);
-        showInfo("Added " + qty + " of '" + sel.getTitle() + "' to cart.");
+        addTrackToCart(selectedTrack, selectedCardController != null ? selectedCardController.getQuantity() : quantitySelections.getOrDefault(selectedTrack.getId(), 1));
     }
 
     @FXML
@@ -287,22 +298,55 @@ public class UserMainController {
         dialog.initModality(Modality.APPLICATION_MODAL);
         dialog.setTitle("Shopping Cart");
 
-        TableView<OrderItem> cartTable = new TableView<>(cartItems); // create table view for the cart items
-        cartTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY); // make columns fill the width
+        TableView<OrderItem> cartTable = new TableView<>(cartItems);
+        cartTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+
+        Label totalLabel = new Label(String.format("Cart Total: RM %.2f", calculateCartTotal()));
+        totalLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
 
         TableColumn<OrderItem, String> titleCol = new TableColumn<>("Track Title");
         titleCol.setCellValueFactory(d -> {
             try {
                 Track t = trackDao.findById(d.getValue().getTrackId());
-                return new SimpleStringProperty(t != null ? t.getTitle() : "Unknown"); // fetch the track title for display
+                return new SimpleStringProperty(t != null ? t.getTitle() : "Unknown");
             } catch (SQLException e) {
-                LOGGER.log(Level.WARNING, "Failed to fetch track title", e); // if there's an error fetching the track title, just show "Error" in the cell
+                LOGGER.log(Level.WARNING, "Failed to fetch track title", e);
                 return new SimpleStringProperty("Error");
             }
         });
 
         TableColumn<OrderItem, Number> qtyCol = new TableColumn<>("Quantity");
         qtyCol.setCellValueFactory(d -> new SimpleIntegerProperty(d.getValue().getQuantity()));
+        qtyCol.setCellFactory(col -> new TableCell<>() {
+            private final Spinner<Integer> spinner = new Spinner<>();
+
+            {
+                spinner.setEditable(true);
+                spinner.valueProperty().addListener((obs, oldVal, newVal) -> {
+                    OrderItem item = getTableRow() == null ? null : getTableRow().getItem();
+                    if (item == null || newVal == null || newVal.equals(oldVal)) {
+                        return;
+                    }
+                    updateCartItemQuantity(item, newVal);
+                    cartTable.refresh();
+                    totalLabel.setText(String.format("Cart Total: RM %.2f", calculateCartTotal()));
+                });
+            }
+
+            @Override
+            protected void updateItem(Number item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || getTableRow() == null || getTableRow().getItem() == null) {
+                    setGraphic(null);
+                    return;
+                }
+
+                OrderItem orderItem = getTableRow().getItem();
+                int maxQty = resolveMaxCartQuantity(orderItem);
+                spinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(1, maxQty, orderItem.getQuantity()));
+                setGraphic(spinner);
+            }
+        });
 
         TableColumn<OrderItem, BigDecimal> priceCol = new TableColumn<>("Price");
         priceCol.setCellValueFactory(d -> new SimpleObjectProperty<>(d.getValue().getUnitPrice()));
@@ -312,41 +356,35 @@ public class UserMainController {
 
         cartTable.getColumns().addAll(titleCol, qtyCol, priceCol, totalCol);
 
-        // calculate the total price of everything in the cart
-        BigDecimal cartTotal = cartItems.stream()
-                .map(OrderItem::getLineTotal)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        Label totalLabel = new Label(String.format("Cart Total: RM %.2f", cartTotal));
-        totalLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
-
         Button removeBtn = new Button("Remove Selected");
+        removeBtn.setStyle("-fx-background-color: #d03238; -fx-text-fill: white; -fx-padding: 8 16; -fx-font-weight: 600;");
         removeBtn.setOnAction(e -> {
-            OrderItem sel = cartTable.getSelectionModel().getSelectedItem(); // get the selected item in the cart table
-            if (sel != null) cartItems.remove(sel);
-
-            // recalculate the total label after removing an item
-            BigDecimal newTotal = cartItems.stream()
-                    .map(OrderItem::getLineTotal)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
-            totalLabel.setText(String.format("Cart Total: RM %.2f", newTotal));
+            OrderItem sel = cartTable.getSelectionModel().getSelectedItem();
+            if (sel != null) {
+                cartItems.remove(sel);
+                totalLabel.setText(String.format("Cart Total: RM %.2f", calculateCartTotal()));
+            }
         });
 
         Button clearBtn = new Button("Clear Cart");
-        clearBtn.setOnAction(e -> { cartItems.clear(); dialog.close(); });
+        clearBtn.setStyle("-fx-background-color: #d03238; -fx-text-fill: white; -fx-padding: 8 16; -fx-font-weight: 600;");
+        clearBtn.setOnAction(e -> {
+            cartItems.clear();
+            dialog.close();
+        });
 
         Button checkoutBtn = new Button("Checkout");
-        checkoutBtn.setStyle("-fx-background-color: #2e7d32; -fx-text-fill: white; -fx-font-weight: bold;");
+        checkoutBtn.setStyle("-fx-background-color: #9fe870; -fx-text-fill: #163300; -fx-padding: 8 20; -fx-font-weight: 600;");
 
         checkoutBtn.setOnAction(e -> {
             try {
                 int customerId = resolveCustomerIdForCurrentUser();
                 int userId = SessionManager.getCurrentUser().getId();
 
-                Order newOrder = orderService.createOrder(customerId, userId, cartItems, null); // create the order
+                Order newOrder = orderService.createOrder(customerId, userId, cartItems, null);
                 newOrder.setStatus("PENDING");
                 orderDao.update(newOrder);
 
-                // clear cart and refresh
                 cartItems.clear();
                 loadAllTracks();
                 dialog.close();
@@ -360,25 +398,57 @@ public class UserMainController {
         });
 
         Button closeBtn = new Button("Close");
+        closeBtn.setStyle("-fx-padding: 8 16;");
         closeBtn.setOnAction(e -> dialog.close());
 
         VBox layoutBox = new VBox(12, cartTable, totalLabel,
                 new HBox(10, removeBtn, clearBtn, checkoutBtn, closeBtn));
         layoutBox.setPadding(new Insets(15));
-        dialog.setScene(new Scene(layoutBox, 600, 430));
+        Scene scene = new Scene(layoutBox, 760, 540);
+        applyAppStylesheet(scene);
+        dialog.setScene(scene);
+        dialog.setMinWidth(700);
+        dialog.setMinHeight(500);
+        dialog.setResizable(true);
         dialog.showAndWait();
+    }
+
+    private void updateCartItemQuantity(OrderItem item, int quantity) {
+        item.setQuantity(quantity);
+        item.setLineTotal(item.getUnitPrice().multiply(BigDecimal.valueOf(quantity)));
+    }
+
+    private BigDecimal calculateCartTotal() {
+        return cartItems.stream()
+                .map(OrderItem::getLineTotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private int resolveMaxCartQuantity(OrderItem item) {
+        try {
+            Track track = trackDao.findById(item.getTrackId());
+            if (track != null && track.getStockQty() > 0) {
+                return track.getStockQty();
+            }
+        } catch (SQLException e) {
+            LOGGER.log(Level.WARNING, "Failed to resolve cart quantity limit", e);
+        }
+        return Math.max(1, item.getQuantity());
     }
 
     @FXML
     private void handleViewOrders() {
         try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/OrderManagementView.fxml")); // load the order management view
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/OrderManagementView.fxml"));
             Stage stage = new Stage();
             stage.setTitle("My Order History");
             stage.initModality(Modality.WINDOW_MODAL);
-            stage.initOwner(trackTable.getScene().getWindow()); // set the owner of the new stage to the current window so it stays on top and is centered relative to it
-            stage.setScene(new Scene(loader.load(), 920, 640));
-            stage.setMinWidth(820); stage.setMinHeight(560);
+            stage.initOwner(trackGrid.getScene().getWindow());
+            Scene scene = new Scene(loader.load(), 1120, 780);
+            applyAppStylesheet(scene);
+            stage.setScene(scene);
+            stage.setMinWidth(1000);
+            stage.setMinHeight(700);
             stage.showAndWait();
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Failed to open orders", e);
@@ -393,11 +463,14 @@ public class UserMainController {
             Stage stage = new Stage();
             stage.setTitle("Music Player");
             stage.initModality(Modality.WINDOW_MODAL);
-            stage.initOwner(trackTable.getScene().getWindow());
-            stage.setScene(new Scene(loader.load(), 600, 500));
-            stage.setMinWidth(500); stage.setMinHeight(400);
+            stage.initOwner(trackGrid.getScene().getWindow());
+            Scene scene = new Scene(loader.load(), 1040, 760);
+            applyAppStylesheet(scene);
+            stage.setScene(scene);
+            stage.setMinWidth(920);
+            stage.setMinHeight(680);
             MusicPlayerController controller = loader.getController();
-            stage.setOnCloseRequest(ev -> controller.dispose()); // ensure media player resources are released when the window is closed
+            stage.setOnCloseRequest(ev -> controller.dispose());
             stage.showAndWait();
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Failed to open player", e);
@@ -407,19 +480,179 @@ public class UserMainController {
 
     @FXML
     private void handleLogout() {
-        SessionManager.clearCurrentUser();
-        Stage stage = (Stage) trackTable.getScene().getWindow();
-        try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/LoginView.fxml"));
-            stage.setScene(new Scene(loader.load(), MusicLibraryApp.LOGIN_SCENE_WIDTH, MusicLibraryApp.LOGIN_SCENE_HEIGHT));
-            stage.setMinWidth(MusicLibraryApp.LOGIN_MIN_WIDTH);
-            stage.setMinHeight(MusicLibraryApp.LOGIN_MIN_HEIGHT);
-            stage.setWidth(MusicLibraryApp.LOGIN_SCENE_WIDTH);
-            stage.setHeight(MusicLibraryApp.LOGIN_SCENE_HEIGHT);
-            stage.centerOnScreen();
-        } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Logout failed", e);
-            showError("Logout failed: " + e.getMessage());
+        Stage confirmDialog = new Stage();
+        confirmDialog.initOwner(trackGrid.getScene().getWindow());
+        confirmDialog.initModality(Modality.WINDOW_MODAL);
+        confirmDialog.setTitle("Confirm Logout");
+
+        VBox content = new VBox(14);
+        content.getStyleClass().add("report-panel");
+        content.setMaxWidth(560);
+        content.setPadding(new Insets(20));
+
+        Label title = new Label("CONFIRM LOGOUT");
+        title.getStyleClass().add("heading-2");
+        Label message = new Label("Are you sure you want to sign out of the Music Library?");
+        message.setWrapText(true);
+        message.setMaxWidth(460);
+
+        Button confirm = new Button("🚪 LOGOUT");
+        confirm.getStyleClass().add("neo-button-danger");
+        confirm.setOnAction(e -> {
+            SessionManager.clearCurrentUser();
+            Stage stage = (Stage) trackGrid.getScene().getWindow();
+            try {
+                FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/LoginView.fxml"));
+                Scene scene = new Scene(loader.load(), MusicLibraryApp.LOGIN_SCENE_WIDTH, MusicLibraryApp.LOGIN_SCENE_HEIGHT);
+                applyAppStylesheet(scene);
+                stage.setScene(scene);
+                stage.setMaximized(false);
+                stage.setMinWidth(MusicLibraryApp.LOGIN_MIN_WIDTH);
+                stage.setMinHeight(MusicLibraryApp.LOGIN_MIN_HEIGHT);
+                stage.setResizable(true);
+                stage.setWidth(MusicLibraryApp.LOGIN_SCENE_WIDTH);
+                stage.setHeight(MusicLibraryApp.LOGIN_SCENE_HEIGHT);
+                stage.centerOnScreen();
+                confirmDialog.close();
+            } catch (Exception ex) {
+                LOGGER.log(Level.SEVERE, "Logout failed", ex);
+                showError("Logout failed: " + ex.getMessage());
+            }
+        });
+
+        Button cancel = new Button("❌ CANCEL");
+        cancel.getStyleClass().add("neo-button-outline");
+        cancel.setOnAction(e -> confirmDialog.close());
+
+        HBox actions = new HBox(10, confirm, cancel);
+        actions.setAlignment(Pos.CENTER_RIGHT);
+        content.getChildren().addAll(title, message, actions);
+
+        Scene scene = new Scene(content, 520, 260);
+        applyAppStylesheet(scene);
+        confirmDialog.setScene(scene);
+        confirmDialog.setMinWidth(500);
+        confirmDialog.setMinHeight(240);
+        confirmDialog.showAndWait();
+    }
+
+    private void showPurchaseDialog(TrackCardController cardController) {
+        Track track = cardController.getTrack();
+        if (track == null || !track.isActive() || track.getStockQty() <= 0) {
+            showError("This track is currently unavailable.");
+            return;
+        }
+
+        VBox content = new VBox(14);
+        content.getStyleClass().add("dialog-surface");
+        content.setMaxWidth(520);
+        content.setPadding(new Insets(20));
+
+        Label title = new Label("Add to Cart / Purchase");
+        title.getStyleClass().add("display-sub");
+
+        Label songLabel = new Label(track.getTitle());
+        songLabel.getStyleClass().add("card-title");
+        songLabel.setWrapText(true);
+        songLabel.setMaxWidth(460);
+
+        Label albumLabel = new Label(track.getAlbum() == null ? "" : track.getAlbum());
+        albumLabel.getStyleClass().add("caption");
+        albumLabel.setWrapText(true);
+        albumLabel.setMaxWidth(460);
+
+        Label qtyLabel = new Label("Quantity: " + cardController.getQuantity());
+        qtyLabel.getStyleClass().add("body-semibold");
+
+        Label amountLabel = new Label(String.format("Estimated total: RM %.2f",
+                track.getPrice().multiply(BigDecimal.valueOf(cardController.getQuantity()))));
+        amountLabel.getStyleClass().add("caption");
+
+        Button addToCart = new Button("Add to Cart");
+        addToCart.getStyleClass().add("wise-pill-primary");
+        addToCart.setOnAction(e -> {
+            addTrackToCart(track, cardController.getQuantity());
+            overlayDialog.close();
+        });
+
+        Button buyNow = new Button("Buy Now");
+        buyNow.getStyleClass().add("wise-pill-secondary");
+        buyNow.setOnAction(e -> {
+            addTrackToCart(track, cardController.getQuantity());
+            overlayDialog.close();
+            handleViewCart();
+        });
+
+        Button cancel = new Button("Cancel");
+        cancel.getStyleClass().add("wise-pill-secondary");
+        cancel.setOnAction(e -> overlayDialog.close());
+
+        HBox actions = new HBox(10, addToCart, buyNow, cancel);
+        actions.setAlignment(Pos.CENTER_RIGHT);
+        content.getChildren().addAll(title, songLabel, albumLabel, qtyLabel, amountLabel, actions);
+        showOverlayDialog(content, 540, 300);
+    }
+
+    private void addTrackToCart(Track sel, int qty) {
+        if (sel == null) {
+            return;
+        }
+        if (sel.getStockQty() <= 0) {
+            showError("Track is out of stock.");
+            return;
+        }
+        int safeQty = Math.max(1, Math.min(qty, sel.getStockQty()));
+
+        for (OrderItem item : cartItems) {
+            if (item.getTrackId() == sel.getId()) {
+                int newQty = item.getQuantity() + safeQty;
+                if (newQty > sel.getStockQty()) {
+                    showError("Total quantity exceeds stock.");
+                    return;
+                }
+                item.setQuantity(newQty);
+                item.setLineTotal(sel.getPrice().multiply(BigDecimal.valueOf(newQty)));
+                showInfo("Added to cart. Total: " + newQty);
+                return;
+            }
+        }
+
+        OrderItem newItem = new OrderItem();
+        newItem.setTrackId(sel.getId());
+        newItem.setQuantity(safeQty);
+        newItem.setUnitPrice(sel.getPrice());
+        newItem.setLineTotal(sel.getPrice().multiply(BigDecimal.valueOf(safeQty)));
+        cartItems.add(newItem);
+        showInfo("Added " + safeQty + " of '" + sel.getTitle() + "' to cart.");
+    }
+
+    private void showOverlayDialog(VBox content, double width, double height) {
+        if (overlayDialog != null && overlayDialog.isShowing()) {
+            overlayDialog.close();
+        }
+
+        StackPane overlay = new StackPane(content);
+        overlay.setAlignment(Pos.CENTER);
+        overlay.setStyle("-fx-background-color: rgba(14,15,12,0.45);");
+
+        Stage dialog = new Stage(StageStyle.TRANSPARENT);
+        overlayDialog = dialog;
+        dialog.initOwner(trackGrid.getScene().getWindow());
+        dialog.initModality(Modality.WINDOW_MODAL);
+
+        double safeWidth = Math.max(width, 480);
+        double safeHeight = Math.max(height, 280);
+        Scene scene = new Scene(overlay, safeWidth, safeHeight);
+        scene.setFill(javafx.scene.paint.Color.TRANSPARENT);
+        applyAppStylesheet(scene);
+        dialog.setScene(scene);
+        dialog.showAndWait();
+    }
+
+    private void applyAppStylesheet(Scene scene) {
+        java.net.URL css = getClass().getResource("/css/app.css");
+        if (css != null) {
+            scene.getStylesheets().add(css.toExternalForm());
         }
     }
 
@@ -432,32 +665,52 @@ public class UserMainController {
         }
     }
 
-    // checks if the currently logged-in user has an associated customer record. If not, it creates one and returns the customer ID.
     private int resolveCustomerIdForCurrentUser() throws SQLException {
-        if (SessionManager.getCurrentUser() == null){
+        if (SessionManager.getCurrentUser() == null) {
             throw new IllegalArgumentException("No logged-in user.");
         }
         String uname = SessionManager.getCurrentUser().getUsername();
-        for (Customer c : customerDao.findAll()){
-            if (uname.equalsIgnoreCase(c.getName())){
-                return c.getId(); // if a customer record already exists for the current user, return its ID
+        for (Customer c : customerDao.findAll()) {
+            if (uname.equalsIgnoreCase(c.getName())) {
+                return c.getId();
             }
         }
-        Customer nc = new Customer(); nc.setName(uname);
+        Customer nc = new Customer();
+        nc.setName(uname);
         int id = customerDao.create(nc);
-        if (id <= 0){
+        if (id <= 0) {
             throw new SQLException("Failed to create customer.");
         }
         return id;
     }
 
     private void showError(String msg) {
-        Alert alert = new Alert(Alert.AlertType.ERROR, msg);
-        alert.setHeaderText("Error");
+        Alert alert = createStyledAlert(Alert.AlertType.ERROR, "ERROR", msg, "error-alert");
         alert.showAndWait();
     }
 
     private void showInfo(String msg) {
-        new Alert(Alert.AlertType.INFORMATION, msg).showAndWait();
+        Alert alert = createStyledAlert(Alert.AlertType.INFORMATION, "INFO", msg, "info-alert");
+        alert.showAndWait();
+    }
+
+    private Alert createStyledAlert(Alert.AlertType type, String header, String message, String styleClass) {
+        Alert alert = new Alert(type);
+        alert.setTitle(header);
+        alert.setHeaderText(header);
+        alert.setContentText(message);
+
+        DialogPane pane = alert.getDialogPane();
+        pane.getStyleClass().add(styleClass);
+        pane.setMinWidth(420);
+        pane.setPrefWidth(500);
+        pane.setMinHeight(220);
+
+        java.net.URL css = getClass().getResource("/css/app.css");
+        if (css != null) {
+            pane.getStylesheets().add(css.toExternalForm());
+        }
+
+        return alert;
     }
 }

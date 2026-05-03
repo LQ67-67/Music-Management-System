@@ -3,12 +3,12 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
-<?import javafx.scene.control.Spinner?>
-<?import javafx.scene.control.TableColumn?>
-<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.FlowPane?>
 <?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.VBox?>
 
 <BorderPane xmlns="http://javafx.com/javafx"
@@ -19,55 +19,55 @@
             prefHeight="864.0">
 
     <top>
-        <HBox spacing="10">
+        <HBox spacing="10" styleClass="header-bar">
             <padding>
                 <Insets top="10" right="10" bottom="10" left="10"/>
             </padding>
             <children>
-                <Label text="Music Library - User" styleClass="title-label"/>
-                <Label fx:id="welcomeLabel"/>
-                <Button text="Edit Profile" onAction="#handleEditProfile"/>
-                <Button text="Logout" onAction="#handleLogout"/>
+                <Label text="🎵 MUSIC LIBRARY STORE" styleClass="title-label header-title"/>
+                <Label fx:id="welcomeLabel" styleClass="header-welcome"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Button text="⚙️ PROFILE" onAction="#handleEditProfile" styleClass="neo-button-secondary"/>
+                <Button text="🚪 LOGOUT" onAction="#handleLogout" styleClass="neo-button-danger"/>
             </children>
         </HBox>
     </top>
 
     <center>
-        <VBox spacing="10">
-            <padding>
-                <Insets top="10" right="10" bottom="10" left="10"/>
-            </padding>
-            <children>
-                <HBox spacing="5">
-                    <children>
-                        <Label text="Search:"/>
-                        <TextField fx:id="searchField" promptText="Title or artist" HBox.hgrow="ALWAYS"/>
-                        <Button text="Search" onAction="#handleSearch"/>
-                        <Label text="Quantity:"/>
-                        <Spinner fx:id="quantitySpinner" prefWidth="80" editable="true" initialValue="1" min="1" max="99"/>
-                    </children>
-                </HBox>
+        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED" style="-fx-faint-focus-color: transparent; -fx-focus-color: transparent;">
+            <VBox spacing="12">
+                <padding>
+                    <Insets top="10" right="10" bottom="10" left="10"/>
+                </padding>
+                <children>
+                    <!-- Search and Filter Bar -->
+                    <HBox spacing="10" styleClass="search-bar" style="-fx-alignment: center-left;">
+                        <children>
+                            <Label text="🔍 SEARCH:"/>
+                            <TextField fx:id="searchField" promptText="Title, artist, album..." HBox.hgrow="ALWAYS" styleClass="neo-input" prefHeight="40.0"/>
+                            <Button text="🔎 SEARCH" onAction="#handleSearch" styleClass="neo-button-primary" prefHeight="40.0"/>
+                        </children>
+                    </HBox>
 
-                <TableView fx:id="trackTable" VBox.vgrow="ALWAYS">
-                    <columns>
-                        <TableColumn fx:id="colCover" text="Cover" prefWidth="90"/>
-                        <TableColumn fx:id="colTitle" text="Title" prefWidth="150"/>
-                        <TableColumn fx:id="colArtist" text="Artist" prefWidth="120"/>
-                        <TableColumn fx:id="colGenre" text="Genre" prefWidth="100"/>
-                        <TableColumn fx:id="colPrice" text="Price" prefWidth="80"/>
-                        <TableColumn fx:id="colStock" text="Stock" prefWidth="80"/>
-                    </columns>
-                </TableView>
+                    <!-- Track Grid (FlowPane) -->
+                    <FlowPane fx:id="trackGrid"
+                              styleClass="flow-pane-container"
+                              prefWrapLength="1200"
+                              hgap="12"
+                              vgap="12"
+                              alignment="TOP_LEFT"/>
 
-                <HBox spacing="10">
-                    <children>
-                        <Button text="Add to Cart" onAction="#handleAddToCart"/>
-                        <Button text="View Cart" onAction="#handleViewCart"/>
-                        <Button text="View Orders" onAction="#handleViewOrders"/>
-                        <Button text="🎵 Music Player" onAction="#handleOpenMusicPlayer"/>
-                    </children>
-                </HBox>
-            </children>
-        </VBox>
+                    <!-- Action Buttons -->
+                    <HBox spacing="10" styleClass="action-row">
+                        <children>
+                            <Button text="➕ ADD TO CART" onAction="#handleAddToCart" styleClass="neo-button-primary"/>
+                            <Button text="🛒 VIEW CART" onAction="#handleViewCart" styleClass="neo-button-secondary"/>
+                            <Button text="📋 VIEW ORDERS" onAction="#handleViewOrders" styleClass="neo-button-outline"/>
+                            <Button text="🎵 MUSIC PLAYER" onAction="#handleOpenMusicPlayer" styleClass="neo-button-secondary"/>
+                        </children>
+                    </HBox>
+                </children>
+            </VBox>
+        </ScrollPane>
     </center>
 </BorderPane>

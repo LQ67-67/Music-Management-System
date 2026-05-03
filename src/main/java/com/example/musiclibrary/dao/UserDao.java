@@ -55,4 +55,20 @@ public class UserDao {
         conn.close();
         return id;
     }
+
+    // update an existing user profile
+    public void update(User user) throws SQLException {
+        String sql = "UPDATE users SET username = ?, password_hash = ?, role = ? WHERE id = ?";
+        Connection conn = DBConnectionManager.getConnection();
+        PreparedStatement ps = conn.prepareStatement(sql);
+
+        ps.setString(1, user.getUsername());
+        ps.setString(2, user.getPasswordHash());
+        ps.setString(3, user.getRole());
+        ps.setInt(4, user.getId());
+        ps.executeUpdate();
+
+        ps.close();
+        conn.close();
+    }
 }

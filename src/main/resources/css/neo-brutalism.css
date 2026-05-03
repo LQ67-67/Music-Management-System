@@ -321,8 +321,6 @@ TextField:disabled, PasswordField:disabled, TextArea:disabled {
     -fx-border-width: 0 0 4 0;
     -fx-border-color: #FF6B6B;
     -fx-padding: 12px 16px;
-    -fx-alignment: center-left;
-    -fx-min-height: 86px;
 }
 
 .header-bar .title-label {
@@ -332,16 +330,6 @@ TextField:disabled, PasswordField:disabled, TextArea:disabled {
 .header-bar Label {
     -fx-text-fill: #FFFFFF;
     -fx-font-weight: 700;
-}
-
-.header-title {
-    -fx-font-size: 30px;
-}
-
-.header-welcome {
-    -fx-font-size: 16px;
-    -fx-font-weight: 900;
-    -fx-text-fill: #FFFFFF;
 }
 
 .nav-label {
@@ -448,11 +436,6 @@ TableView:focused {
     -fx-background-color: #000000;
     -fx-border-width: 0 1 2 0;
     -fx-border-color: #FFFFFF;
-}
-
-.table-view .column-header .label {
-    -fx-text-fill: #FFFFFF;
-    -fx-font-weight: 900;
 }
 
 .table-cell {
@@ -573,15 +556,6 @@ ScrollPane .viewport {
 TabPane {
     -fx-open-tab-animation: NONE;
     -fx-close-tab-animation: NONE;
-}
-
-SplitPane {
-    -fx-background-color: transparent;
-}
-
-.split-pane-divider {
-    -fx-background-color: #000000;
-    -fx-padding: 0 2 0 2;
 }
 
 .tab {
@@ -790,15 +764,6 @@ Separator {
     -fx-padding: 16px;
 }
 
-.report-scroll-pane {
-    -fx-background-color: #FFFDF5;
-    -fx-border-color: transparent;
-}
-
-.report-scroll-pane .viewport {
-    -fx-background-color: #FFFDF5;
-}
-
 /* ====== DIALOG STYLES ====== */
 
 .dialog-form-grid {
@@ -850,27 +815,3 @@ Separator {
     -fx-padding: 16px;
 }
 
-/* JavaFX Alert/DialogPane integration */
-.dialog-pane {
-    -fx-background-color: #FFFFFF;
-    -fx-border-color: #000000;
-    -fx-border-width: 4;
-}
-
-.dialog-pane > .content.label {
-    -fx-text-fill: #000000;
-    -fx-font-weight: 700;
-    -fx-font-size: 14px;
-}
-
-.dialog-pane > .header-panel {
-    -fx-background-color: #FFFDF5;
-    -fx-border-color: #000000;
-    -fx-border-width: 0 0 4 0;
-}
-
-.dialog-pane > .header-panel .label {
-    -fx-text-fill: #000000;
-    -fx-font-weight: 900;
-    -fx-font-size: 16px;
-}

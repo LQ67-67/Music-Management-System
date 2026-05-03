@@ -10,14 +10,15 @@
 <?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.RowConstraints?>
+<?import javafx.scene.layout.VBox?>
 
 <GridPane fx:controller="com.example.musiclibrary.controller.LoginController"
           xmlns="http://javafx.com/javafx"
           xmlns:fx="http://javafx.com/fxml"
           stylesheets="@../css/app.css"
-          hgap="10" vgap="10"
-          prefWidth="500.0"
-          prefHeight="340.0">
+          hgap="10" vgap="8"
+          prefWidth="600.0"
+          prefHeight="500.0">
     <padding>
         <Insets top="20" right="20" bottom="20" left="20"/>
     </padding>
@@ -33,7 +34,9 @@
         <RowConstraints minHeight="30"/>
         <RowConstraints minHeight="20"/>
         <RowConstraints minHeight="30"/>
+        <RowConstraints minHeight="60"/>
         <RowConstraints minHeight="30"/>
+        <RowConstraints minHeight="20"/>
         <RowConstraints minHeight="30"/>
     </rowConstraints>
 
@@ -45,18 +48,26 @@
     <Label text="(Max 20 chars)" styleClass="hint-label" GridPane.rowIndex="2" GridPane.columnIndex="1" GridPane.halignment="RIGHT"/>
 
     <Label text="Password:" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
-    <PasswordField fx:id="passwordField" promptText="Enter password" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
+    <HBox spacing="6" GridPane.rowIndex="3" GridPane.columnIndex="1">
+        <PasswordField fx:id="passwordField" promptText="Enter password" HBox.hgrow="ALWAYS"/>
+        <TextField fx:id="passwordShowField" promptText="Enter password" visible="false" managed="false" HBox.hgrow="ALWAYS"/>
+        <Button fx:id="togglePasswordBtn" text="👁️" styleClass="icon-button" prefWidth="40"/>
+    </HBox>
 
-    <Label text="(Max 30 chars)" styleClass="hint-label" GridPane.rowIndex="4" GridPane.columnIndex="1" GridPane.halignment="RIGHT"/>
+    <Label fx:id="passwordHintLabel" styleClass="hint-label" GridPane.rowIndex="4" GridPane.columnIndex="1"/>
 
-    <Label fx:id="errorLabel" styleClass="error-label" GridPane.rowIndex="5" GridPane.columnIndex="0" GridPane.columnSpan="2"/>
+    <VBox spacing="4" GridPane.rowIndex="5" GridPane.columnIndex="1" GridPane.columnSpan="2">
+        <Label fx:id="passwordReqsLabel" text="Password must contain:" styleClass="small"/>
+        <Label fx:id="requirementsLabel" text="• Uppercase letter • Lowercase letter • Digit" styleClass="small" style="-fx-text-fill: #d03238;"/>
+    </VBox>
 
-    <HBox spacing="16" GridPane.rowIndex="6" GridPane.columnIndex="0" GridPane.columnSpan="2">
-        <Button text="Login" onAction="#handleLogin" styleClass="primary-button"/>
+    <Label fx:id="errorLabel" styleClass="error-label" GridPane.rowIndex="6" GridPane.columnIndex="0" GridPane.columnSpan="2"/>
+
+    <HBox spacing="16" GridPane.rowIndex="7" GridPane.columnIndex="0" GridPane.columnSpan="2">
+        <Button text="Login" onAction="#handleLogin" styleClass="wise-pill-primary"/>
         <Hyperlink text="Register" onAction="#handleRegister" styleClass="link-button"/>
     </HBox>
 
     <Label fx:id="infoLabel" styleClass="info-label"
-           GridPane.rowIndex="7" GridPane.columnIndex="0" GridPane.columnSpan="2"/>
+           GridPane.rowIndex="8" GridPane.columnIndex="0" GridPane.columnSpan="2"/>
 </GridPane>
-

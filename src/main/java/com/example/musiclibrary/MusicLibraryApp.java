@@ -9,10 +9,10 @@ import javafx.stage.Stage;
 import java.io.InputStream;
 
 public class MusicLibraryApp extends Application {
-    public static final double LOGIN_SCENE_WIDTH = 500;
-    public static final double LOGIN_SCENE_HEIGHT = 340;
-    public static final double LOGIN_MIN_WIDTH = 420;
-    public static final double LOGIN_MIN_HEIGHT = 280;
+    public static final double LOGIN_SCENE_WIDTH = 820;
+    public static final double LOGIN_SCENE_HEIGHT = 520;
+    public static final double LOGIN_MIN_WIDTH = 560;
+    public static final double LOGIN_MIN_HEIGHT = 460;
 
     @Override
     public void start(Stage primaryStage) throws Exception {

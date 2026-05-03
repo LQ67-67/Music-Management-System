@@ -3,6 +3,7 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.control.TableView?>
 <?import javafx.scene.control.TextField?>
@@ -29,41 +30,45 @@
     </top>
 
     <center>
-        <VBox spacing="10">
-            <padding>
-                <Insets top="10" right="10" bottom="10" left="10"/>
-            </padding>
-            <children>
-                <TableView fx:id="orderTable" prefHeight="250">
-                    <columns>
-                        <TableColumn fx:id="colOrderId" text="Order ID" prefWidth="80"/>
-                        <TableColumn fx:id="colOrderDate" text="Date" prefWidth="140"/>
-                        <TableColumn fx:id="colStatus" text="Status" prefWidth="100"/>
-                        <TableColumn fx:id="colTotal" text="Total" prefWidth="100"/>
-                    </columns>
-                </TableView>
+        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED" style="-fx-faint-focus-color: transparent; -fx-focus-color: transparent;">
+            <VBox spacing="10">
+                <padding>
+                    <Insets top="10" right="10" bottom="10" left="10"/>
+                </padding>
+                <children>
+                    <Label text="Order List:" style="-fx-font-weight: bold;"/>
+                    <TableView fx:id="orderTable" VBox.vgrow="ALWAYS">
+                        <columns>
+                            <TableColumn fx:id="colOrderId" text="Order ID" prefWidth="80"/>
+                            <TableColumn fx:id="colOrderDate" text="Date" prefWidth="140"/>
+                            <TableColumn fx:id="colStatus" text="Status" prefWidth="100"/>
+                            <TableColumn fx:id="colTotal" text="Total" prefWidth="100"/>
+                        </columns>
+                    </TableView>
 
-                <TableView fx:id="orderItemTable" prefHeight="250">
-                    <columns>
-                        <TableColumn fx:id="colTrack" text="Track" prefWidth="200"/>
-                        <TableColumn fx:id="colQuantity" text="Qty" prefWidth="60"/>
-                        <TableColumn fx:id="colUnitPrice" text="Unit Price" prefWidth="100"/>
-                        <TableColumn fx:id="colLineTotal" text="Line Total" prefWidth="100"/>
-                    </columns>
-                </TableView>
+                    <Label text="Order Items:" style="-fx-font-weight: bold; -fx-padding: 10 0 0 0;"/>
+                    <TableView fx:id="orderItemTable" VBox.vgrow="ALWAYS">
+                        <columns>
+                            <TableColumn fx:id="colTrack" text="Track" prefWidth="200"/>
+                            <TableColumn fx:id="colQuantity" text="Qty" prefWidth="60"/>
+                            <TableColumn fx:id="colUnitPrice" text="Unit Price" prefWidth="100"/>
+                            <TableColumn fx:id="colLineTotal" text="Line Total" prefWidth="100"/>
+                        </columns>
+                    </TableView>
 
-                <HBox spacing="10">
-                    <children>
-                        <Label text="Shipping City:"/>
-                        <TextField fx:id="shippingCityField" prefWidth="150"/>
-                        <Button text="Pay Order" onAction="#handlePayOrder"/>
-                        <Button text="Cancel Order" onAction="#handleCancelOrder"/>
-                        <Button text="Delete Order" onAction="#handleDeleteOrder"/>
-                        <Button text="View Invoice" onAction="#handleViewInvoice"/>
-                    </children>
-                </HBox>
-            </children>
-        </VBox>
+                    <HBox spacing="10">
+                        <children>
+                            <Label text="Shipping City:"/>
+                            <TextField fx:id="shippingCityField" prefWidth="150"/>
+                            <Button text="Pay Order" onAction="#handlePayOrder"/>
+                            <Button text="Cancel Order" onAction="#handleCancelOrder"/>
+                            <Button text="Delete Order" onAction="#handleDeleteOrder"/>
+                            <Button text="View Invoice" onAction="#handleViewInvoice"/>
+                        </children>
+                    </HBox>
+                </children>
+            </VBox>
+        </ScrollPane>
     </center>
 </BorderPane>
 

@@ -4,6 +4,7 @@
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.Slider?>
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.BorderPane?>
@@ -31,34 +32,36 @@
     </top>
 
     <center>
-        <VBox spacing="10">
-            <padding>
-                <Insets top="10" right="10" bottom="10" left="10"/>
-            </padding>
-            <children>
-                <ImageView fx:id="trackImageView" fitWidth="100" fitHeight="100" preserveRatio="true"/>
-                <Label text="Playlist:" style="-fx-font-weight: bold;"/>
-                <ListView fx:id="playlistView" VBox.vgrow="ALWAYS" maxHeight="Infinity"/>
+        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED" style="-fx-faint-focus-color: transparent; -fx-focus-color: transparent;">
+            <VBox spacing="10">
+                <padding>
+                    <Insets top="10" right="10" bottom="10" left="10"/>
+                </padding>
+                <children>
+                    <ImageView fx:id="trackImageView" fitWidth="100" fitHeight="100" preserveRatio="true"/>
+                    <Label text="Playlist:" style="-fx-font-weight: bold;"/>
+                    <ListView fx:id="playlistView" VBox.vgrow="ALWAYS" maxHeight="Infinity" prefHeight="300"/>
 
-                <HBox spacing="10">
-                    <padding>
-                        <Insets top="5"/>
-                    </padding>
-                    <children>
-                        <Label text="Progress:"/>
-                        <Slider fx:id="progressSlider" min="0" max="100" HBox.hgrow="ALWAYS"/>
-                        <Label fx:id="timeLabel" text="00:00 / 00:00" prefWidth="80"/>
-                    </children>
-                </HBox>
+                    <HBox spacing="10">
+                        <padding>
+                            <Insets top="5"/>
+                        </padding>
+                        <children>
+                            <Label text="Progress:"/>
+                            <Slider fx:id="progressSlider" min="0" max="100" HBox.hgrow="ALWAYS"/>
+                            <Label fx:id="timeLabel" text="00:00 / 00:00" prefWidth="80"/>
+                        </children>
+                    </HBox>
 
-                <HBox spacing="10">
-                    <children>
-                        <Label text="Volume:"/>
-                        <Slider fx:id="volumeSlider" min="0" max="100" prefWidth="150"/>
-                    </children>
-                </HBox>
-            </children>
-        </VBox>
+                    <HBox spacing="10">
+                        <children>
+                            <Label text="Volume:"/>
+                            <Slider fx:id="volumeSlider" min="0" max="100" prefWidth="150"/>
+                        </children>
+                    </HBox>
+                </children>
+            </VBox>
+        </ScrollPane>
     </center>
 
     <bottom>
@@ -67,10 +70,10 @@
                 <Insets top="15" right="15" bottom="15" left="15"/>
             </padding>
             <children>
-                <Button fx:id="previousButton" text="⏮ Previous" onAction="#handlePrevious" prefWidth="100"/>
-                <Button fx:id="playButton" text="▶ Play" onAction="#handlePlay" prefWidth="80"/>
-                <Button fx:id="pauseButton" text="⏸ Pause" onAction="#handlePause" prefWidth="80"/>
-                <Button fx:id="nextButton" text="⏭ Next" onAction="#handleNext" prefWidth="100"/>
+                <Button fx:id="previousButton" text="⏮ PREVIOUS" onAction="#handlePrevious" prefWidth="150"/>
+                <Button fx:id="playButton" text="▶ PLAY" onAction="#handlePlay" prefWidth="120"/>
+                <Button fx:id="pauseButton" text="⏸ PAUSE" onAction="#handlePause" prefWidth="120"/>
+                <Button fx:id="nextButton" text="⏭ NEXT" onAction="#handleNext" prefWidth="120"/>
             </children>
         </HBox>
     </bottom>

@@ -6,8 +6,10 @@ import com.example.musiclibrary.dao.TrackDao;
 import com.example.musiclibrary.db.DBConnectionManager;
 import com.example.musiclibrary.model.Customer;
 import com.example.musiclibrary.model.Track;
+import com.example.musiclibrary.service.ExportService;
 import com.example.musiclibrary.session.SessionManager;
 import com.example.musiclibrary.util.TrackMediaResolver;
+import javafx.application.Platform;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
@@ -26,6 +28,7 @@ import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
+import javafx.scene.text.Text;
 import javafx.stage.FileChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
@@ -38,8 +41,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
+import java.time.LocalDate;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -53,6 +55,9 @@ public class AdminMainController {
     @FXML private Tab customersTab;
     @FXML private Tab ordersTab;
     @FXML private Tab reportsTab;
+    private DatePicker reportStartDatePicker;
+    private DatePicker reportEndDatePicker;
+    private Label reportRangeLabel;
 
     private final ObservableList<Track> trackData = FXCollections.observableArrayList();
     private final ObservableList<Customer> customerData = FXCollections.observableArrayList();
@@ -60,10 +65,14 @@ public class AdminMainController {
 
     private final TrackDao trackDao = new TrackDao();
     private final CustomerDao customerDao = new CustomerDao();
+    private final ExportService exportService = new ExportService();
 
     // resource directories for uploaded files
     private static final String IMAGE_DIR = "src/main/resources/images/tracks/";
     private static final String AUDIO_DIR = "src/main/resources/musics/";
+
+    // FIX: flag to prevent re-entrant canvas redraws during layout
+    private boolean redrawPending = false;
 
     @FXML
     private void initialize() {
@@ -79,7 +88,10 @@ public class AdminMainController {
         loadTracks();
         loadCustomers();
         loadOrders();
-        refreshReport("Summary");
+
+        // FIX: delay refreshReport until after layout is fully complete,
+        // so the canvas resize listeners don't fire and clear the chart right after it's drawn
+        Platform.runLater(() -> refreshReport("Summary"));
     }
 
     // track tab
@@ -132,20 +144,23 @@ public class AdminMainController {
 
         trackTable.getColumns().addAll(imageCol, idCol, titleCol, artistCol, albumCol, genreCol, priceCol, stockCol);
 
-        Button addBtn = new Button("Add Track");
+        Button addBtn = new Button("➕ ADD TRACK");
+        addBtn.getStyleClass().add("neo-button-primary");
         addBtn.setOnAction(e -> showTrackDialog(null));
 
-        Button editBtn = new Button("Edit Track");
+        Button editBtn = new Button("✏️ EDIT TRACK");
+        editBtn.getStyleClass().add("neo-button-secondary");
         editBtn.setOnAction(e -> {
             Track sel = trackTable.getSelectionModel().getSelectedItem();
             if (sel != null){
-                showTrackDialog(sel); // pass the selected track to the dialog so it can pre-fill the fields and know whether to create or update
+                showTrackDialog(sel);
             } else{
                 showError("Please select a track from the table to edit.");
             }
         });
 
-        Button deleteBtn = new Button("Delete Track");
+        Button deleteBtn = new Button("🗑️ DELETE TRACK");
+        deleteBtn.getStyleClass().add("neo-button-danger");
         deleteBtn.setOnAction(e -> {
             Track sel = trackTable.getSelectionModel().getSelectedItem();
             if (sel != null){
@@ -155,14 +170,15 @@ public class AdminMainController {
             }
         });
 
-        Button exportBtn = new Button("Export Track List (txt)");
-        exportBtn.setOnAction(e -> exportTableToTxt("Tracks", new String[]{"ID", "Title", "Artist", "Album", "Genre", "Price", "Stock"},
+        Button exportBtn = new Button("📥 EXPORT LIST");
+        exportBtn.getStyleClass().add("neo-button-outline");
+        exportBtn.setOnAction(e -> exportService.exportTableToTxt("Tracks", new String[]{"ID", "Title", "Artist", "Album", "Genre", "Price", "Stock"},
                 trackData.stream().map(t -> new String[]{
                         String.valueOf(t.getId()), t.getTitle(), t.getArtist(),
                         t.getAlbum(), t.getGenre(),
                         t.getPrice() != null ? t.getPrice().toPlainString() : "",
                         String.valueOf(t.getStockQty())
-                }).collect(java.util.stream.Collectors.toList())));
+                }).collect(java.util.stream.Collectors.toList()), tabPane.getScene().getWindow()));
 
         HBox buttonBox = new HBox(10, addBtn, editBtn, deleteBtn, exportBtn);
         VBox mainBox = new VBox(10, new Label("Track List"), trackTable, buttonBox);
@@ -180,7 +196,7 @@ public class AdminMainController {
         }
     }
 
-     //Add/Edit track dialog — now includes image and audio file pickers.
+    // Add/Edit track dialog — includes image and audio file pickers.
     private void showTrackDialog(Track track) {
         Stage dialog = new Stage();
         dialog.initModality(Modality.APPLICATION_MODAL);
@@ -243,21 +259,47 @@ public class AdminMainController {
 
         GridPane grid = new GridPane();
         grid.setHgap(10); grid.setVgap(10); grid.setPadding(new Insets(20)); // form layout
+        grid.getStyleClass().add("dialog-form-grid");
 
-        grid.add(new Label("Title:"), 0, 0);  grid.add(titleField, 1, 0);
-        grid.add(new Label("Artist:"), 0, 1); grid.add(artistField, 1, 1);
-        grid.add(new Label("Album:"), 0, 2);  grid.add(albumField, 1, 2);
-        grid.add(new Label("Genre:"), 0, 3);  grid.add(genreField, 1, 3);
-        grid.add(new Label("Price (RM):"), 0, 4); grid.add(priceField, 1, 4);
-        grid.add(new Label("Stock Qty:"), 0, 5); grid.add(stockField, 1, 5);
-        grid.add(new Label("Cover Art:"), 0, 6); grid.add(imageRow, 1, 6);
-        grid.add(new Label("Audio File:"), 0, 7); grid.add(audioRow, 1, 7);
+        Label titleLabel = new Label("Title:");
+        titleLabel.getStyleClass().add("dialog-form-label");
+        grid.add(titleLabel, 0, 0);  grid.add(titleField, 1, 0);
+
+        Label artistLabel = new Label("Artist:");
+        artistLabel.getStyleClass().add("dialog-form-label");
+        grid.add(artistLabel, 0, 1); grid.add(artistField, 1, 1);
+
+        Label albumLabel = new Label("Album:");
+        albumLabel.getStyleClass().add("dialog-form-label");
+        grid.add(albumLabel, 0, 2);  grid.add(albumField, 1, 2);
+
+        Label genreLabel = new Label("Genre:");
+        genreLabel.getStyleClass().add("dialog-form-label");
+        grid.add(genreLabel, 0, 3);  grid.add(genreField, 1, 3);
+
+        Label priceLabel = new Label("Price (RM):");
+        priceLabel.getStyleClass().add("dialog-form-label");
+        grid.add(priceLabel, 0, 4); grid.add(priceField, 1, 4);
+
+        Label stockLabel = new Label("Stock Qty:");
+        stockLabel.getStyleClass().add("dialog-form-label");
+        grid.add(stockLabel, 0, 5); grid.add(stockField, 1, 5);
+
+        Label coverLabel = new Label("Cover Art:");
+        coverLabel.getStyleClass().add("dialog-form-label");
+        grid.add(coverLabel, 0, 6); grid.add(imageRow, 1, 6);
+
+        Label audioLabel = new Label("Audio File:");
+        audioLabel.getStyleClass().add("dialog-form-label");
+        grid.add(audioLabel, 0, 7); grid.add(audioRow, 1, 7);
 
         Label validationLabel = new Label("");
-        validationLabel.setStyle("-fx-text-fill: red;");
+        validationLabel.setStyle("-fx-text-fill: #d03238; -fx-font-size: 13px; -fx-font-weight: 600; -fx-padding: 8 0 0 0;");
+        validationLabel.setWrapText(true);
 
-        Button saveBtn = new Button("Save");
-        saveBtn.setOnAction(event -> {
+        Button saveBtn = new Button("💾 SAVE TRACK");
+        saveBtn.getStyleClass().add("neo-button-primary");
+        saveBtn.setOnAction(e -> {
             // input validation
             String titleVal = titleField.getText().trim();
             String artistVal = artistField.getText().trim();
@@ -327,7 +369,8 @@ public class AdminMainController {
             }
         });
 
-        Button cancelBtn = new Button("Cancel");
+        Button cancelBtn = new Button("❌ CANCEL");
+        cancelBtn.getStyleClass().add("neo-button-outline");
         cancelBtn.setOnAction(e -> dialog.close());
 
         HBox buttonLayout = new HBox(10, saveBtn, cancelBtn);
@@ -336,9 +379,13 @@ public class AdminMainController {
         VBox mainLayout = new VBox(10, grid, validationLabel, buttonLayout);
         mainLayout.setPadding(new Insets(10));
 
-        dialog.setScene(new Scene(new ScrollPane(mainLayout)));
-        dialog.setWidth(540);
-        dialog.setHeight(560);
+        Scene scene = new Scene(new ScrollPane(mainLayout));
+        scene.getStylesheets().add(getClass().getResource("/css/app.css").toExternalForm());
+        dialog.setScene(scene);
+        dialog.setWidth(620);
+        dialog.setHeight(680);
+        dialog.setMinWidth(560);
+        dialog.setMinHeight(620);
         dialog.showAndWait();
     }
 
@@ -383,10 +430,12 @@ public class AdminMainController {
 
         customerTable.getColumns().addAll(nameCol, emailCol, phoneCol, cityCol);
 
-        Button addBtn = new Button("Add Customer");
+        Button addBtn = new Button("➕ ADD CUSTOMER");
+        addBtn.getStyleClass().add("neo-button-primary");
         addBtn.setOnAction(e -> showCustomerDialog(null));
 
-        Button editBtn = new Button("Edit Customer");
+        Button editBtn = new Button("✏️ EDIT CUSTOMER");
+        editBtn.getStyleClass().add("neo-button-secondary");
         editBtn.setOnAction(e -> {
             Customer sel = customerTable.getSelectionModel().getSelectedItem();
             if (sel != null){
@@ -396,7 +445,8 @@ public class AdminMainController {
             }
         });
 
-        Button deleteBtn = new Button("Delete Customer");
+        Button deleteBtn = new Button("🗑️ DELETE CUSTOMER");
+        deleteBtn.getStyleClass().add("neo-button-danger");
         deleteBtn.setOnAction(e -> {
             Customer sel = customerTable.getSelectionModel().getSelectedItem();
             if (sel != null){
@@ -406,11 +456,12 @@ public class AdminMainController {
             }
         });
 
-        Button exportBtn = new Button("Export Customer List (txt)");
-        exportBtn.setOnAction(e -> exportTableToTxt("Customers", new String[]{"ID", "Name", "Email", "Phone", "City"},
+        Button exportBtn = new Button("📥 EXPORT LIST");
+        exportBtn.getStyleClass().add("neo-button-outline");
+        exportBtn.setOnAction(e -> exportService.exportTableToTxt("Customers", new String[]{"ID", "Name", "Email", "Phone", "City"},
                 customerData.stream().map(c -> new String[]{
                         String.valueOf(c.getId()), c.getName(), c.getEmail(), c.getPhone(), c.getCity()
-                }).collect(java.util.stream.Collectors.toList()))); // export customer list to txt file with ID, name, email, phone and city columns
+                }).collect(java.util.stream.Collectors.toList()), tabPane.getScene().getWindow())); // export customer list to txt file with ID, name, email, phone and city columns
 
         HBox buttonBox = new HBox(10, addBtn, editBtn, deleteBtn, exportBtn);
         VBox mainBox = new VBox(10, new Label("Customer List"), customerTable, buttonBox);
@@ -421,7 +472,7 @@ public class AdminMainController {
 
     private void loadCustomers() {
         try {
-            customerData.setAll(customerDao.findAll()); // load all customers for management(even those without orders
+            customerData.setAll(customerDao.findAll()); // load all customers for management (even those without orders)
         } catch (SQLException e) {
             LOGGER.log(Level.SEVERE, "Failed to load customers", e);
             showError("Failed to load customers: " + e.getMessage());
@@ -440,15 +491,30 @@ public class AdminMainController {
 
         GridPane grid = new GridPane();
         grid.setHgap(10); grid.setVgap(10); grid.setPadding(new Insets(20));
-        grid.add(new Label("Name:"), 0, 0);  grid.add(nameField, 1, 0);
-        grid.add(new Label("Email:"), 0, 1); grid.add(emailField, 1, 1);
-        grid.add(new Label("Phone:"), 0, 2); grid.add(phoneField, 1, 2);
-        grid.add(new Label("City:"), 0, 3);  grid.add(cityField, 1, 3);
+        grid.getStyleClass().add("dialog-form-grid");
+
+        Label nameLabel = new Label("Name:");
+        nameLabel.getStyleClass().add("dialog-form-label");
+        grid.add(nameLabel, 0, 0);  grid.add(nameField, 1, 0);
+
+        Label emailLabel = new Label("Email:");
+        emailLabel.getStyleClass().add("dialog-form-label");
+        grid.add(emailLabel, 0, 1); grid.add(emailField, 1, 1);
+
+        Label phoneLabel = new Label("Phone:");
+        phoneLabel.getStyleClass().add("dialog-form-label");
+        grid.add(phoneLabel, 0, 2); grid.add(phoneField, 1, 2);
+
+        Label cityLabel = new Label("City:");
+        cityLabel.getStyleClass().add("dialog-form-label");
+        grid.add(cityLabel, 0, 3);  grid.add(cityField, 1, 3);
 
         Label validationLabel = new Label("");
-        validationLabel.setStyle("-fx-text-fill: red;");
+        validationLabel.setStyle("-fx-text-fill: #d03238; -fx-font-size: 13px; -fx-font-weight: 600; -fx-padding: 8 0 0 0;");
+        validationLabel.setWrapText(true);
 
-        Button saveBtn = new Button("Save");
+        Button saveBtn = new Button("💾 SAVE CUSTOMER");
+        saveBtn.getStyleClass().add("neo-button-primary");
         saveBtn.setOnAction(e -> {
             String nameVal = nameField.getText().trim();
             String emailVal = emailField.getText().trim();
@@ -481,13 +547,21 @@ public class AdminMainController {
             }
         });
 
-        Button cancelBtn = new Button("Cancel");
+        Button cancelBtn = new Button("❌ CANCEL");
+        cancelBtn.getStyleClass().add("neo-button-outline");
         cancelBtn.setOnAction(e -> dialog.close());
 
         HBox buttonLayout = new HBox(10, saveBtn, cancelBtn);
         buttonLayout.setAlignment(Pos.CENTER);
         VBox mainLayout = new VBox(10, grid, validationLabel, buttonLayout);
-        dialog.setScene(new Scene(mainLayout));
+        mainLayout.setPadding(new Insets(10));
+        Scene scene = new Scene(mainLayout);
+        scene.getStylesheets().add(getClass().getResource("/css/app.css").toExternalForm());
+        dialog.setScene(scene);
+        dialog.setWidth(560);
+        dialog.setHeight(420);
+        dialog.setMinWidth(520);
+        dialog.setMinHeight(360);
         dialog.showAndWait();
     }
 
@@ -524,7 +598,8 @@ public class AdminMainController {
             orderTable.getColumns().add(col);
         }
 
-        Button editBtn = new Button("Edit Order");
+        Button editBtn = new Button("✏️ EDIT ORDER");
+        editBtn.getStyleClass().add("neo-button-secondary");
         editBtn.setOnAction(e -> {
             String[] row = orderTable.getSelectionModel().getSelectedItem();
             if (row != null){
@@ -534,8 +609,9 @@ public class AdminMainController {
             }
         });
 
-        Button exportBtn = new Button("Export Order List (txt)");
-        exportBtn.setOnAction(e -> exportTableToTxt("Orders", new String[]{"Order ID", "Username", "Customer", "Date", "Status", "Total", "City"}, new ArrayList<>(orderData))); // export order list to txt
+        Button exportBtn = new Button("📥 EXPORT LIST");
+        exportBtn.getStyleClass().add("neo-button-outline");
+        exportBtn.setOnAction(e -> exportService.exportTableToTxt("Orders", new String[]{"Order ID", "Username", "Customer", "Date", "Status", "Total", "City"}, new ArrayList<>(orderData), tabPane.getScene().getWindow())); // export order list to txt
 
         HBox buttonBox = new HBox(10, editBtn, exportBtn);
         VBox mainBox = new VBox(10, new Label("All Orders"), orderTable, buttonBox);
@@ -557,16 +633,25 @@ public class AdminMainController {
 
         GridPane grid = new GridPane();
         grid.setHgap(10); grid.setVgap(10); grid.setPadding(new Insets(20));
-        grid.add(new Label("Status:"), 0, 0); grid.add(statusBox, 1, 0);
-        grid.add(new Label("Shipping City:"), 0, 1); grid.add(cityField, 1, 1);
+        grid.getStyleClass().add("dialog-form-grid");
+
+        Label statusLabel = new Label("Status:");
+        statusLabel.getStyleClass().add("dialog-form-label");
+        grid.add(statusLabel, 0, 0); grid.add(statusBox, 1, 0);
+
+        Label cityLabel = new Label("Shipping City:");
+        cityLabel.getStyleClass().add("dialog-form-label");
+        grid.add(cityLabel, 0, 1); grid.add(cityField, 1, 1);
 
         Label validationLabel = new Label("");
-        validationLabel.setStyle("-fx-text-fill: red;");
+        validationLabel.setStyle("-fx-text-fill: #d03238; -fx-font-size: 13px; -fx-font-weight: 600; -fx-padding: 8 0 0 0;");
+        validationLabel.setWrapText(true);
 
-        Button saveBtn = new Button("Save");
+        Button saveBtn = new Button("💾 SAVE ORDER");
+        saveBtn.getStyleClass().add("neo-button-primary");
         saveBtn.setOnAction(e -> {
             if (statusBox.getValue() == null) {
-                validationLabel.setText("Please select a status.");  //  check if status is null before saving
+                validationLabel.setText("Please select a status.");  // check if status is null before saving
                 return;
             }
             String sql = "UPDATE orders SET status = ?, shipping_city = ? WHERE id = ?"; // only allow editing of status and shipping city
@@ -584,14 +669,22 @@ public class AdminMainController {
             }
         });
 
-        Button cancelBtn = new Button("Cancel");
+        Button cancelBtn = new Button("❌ CANCEL");
+        cancelBtn.getStyleClass().add("neo-button-outline");
         cancelBtn.setOnAction(e -> dialog.close());
 
         HBox buttonLayout = new HBox(10, saveBtn, cancelBtn);
         buttonLayout.setAlignment(Pos.CENTER);
 
         VBox mainLayout = new VBox(10, grid, validationLabel, buttonLayout);
-        dialog.setScene(new Scene(mainLayout));
+        mainLayout.setPadding(new Insets(10));
+        Scene scene = new Scene(mainLayout);
+        scene.getStylesheets().add(getClass().getResource("/css/app.css").toExternalForm());
+        dialog.setScene(scene);
+        dialog.setWidth(520);
+        dialog.setHeight(360);
+        dialog.setMinWidth(500);
+        dialog.setMinHeight(320);
         dialog.showAndWait();
     }
 
@@ -625,9 +718,12 @@ public class AdminMainController {
     // reports tab
     private final List<String[]> lastPieData = new ArrayList<>();
     private String lastPieTitle = "Sales by Genre";
+    private final List<String> lastChartLabels = new ArrayList<>();
+    private final List<Double> lastChartValues = new ArrayList<>();
+    private String lastChartType = "";
 
     private VBox buildReportsTabContent() {
-        // initialize all components (Keeping the original logic)
+        // initialize all components
         Label activeTracksLabel = new Label();
         Label customerCountLabel = new Label();
         Label orderCountLabel = new Label();
@@ -635,59 +731,103 @@ public class AdminMainController {
 
         TableView<String> reportTable = new TableView<>();
         reportTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
-        reportTable.setPrefHeight(250);  // slightly increased to fit the left column layout better
+        reportTable.setPrefHeight(220);
+        reportTable.setMinHeight(150);
 
         Label avgLabel = new Label(), sumLabel = new Label(), maxLabel = new Label(), minLabel = new Label();
 
-        Canvas pieCanvas = new Canvas(550, 350); // enlarge the Canvas to match your "Large Chart" request
+        Canvas pieCanvas = new Canvas(620, 320);
+
+        Pane canvasPane = new Pane(pieCanvas);
+        pieCanvas.widthProperty().bind(canvasPane.widthProperty());
+        pieCanvas.heightProperty().bind(canvasPane.heightProperty());
+
+        pieCanvas.widthProperty().addListener((obs, oldVal, newVal) -> scheduleRedraw(pieCanvas));
+        pieCanvas.heightProperty().addListener((obs, oldVal, newVal) -> scheduleRedraw(pieCanvas));
 
         ComboBox<String> reportType = new ComboBox<>();
         reportType.getItems().addAll("Summary", "Sales by Genre", "Sales by City", "Sales by Date");
         reportType.setValue("Summary");
 
-        reportsTab.setUserData(new Object[]{activeTracksLabel, customerCountLabel, orderCountLabel, totalSalesLabel, reportTable, avgLabel, sumLabel, maxLabel, minLabel, pieCanvas});
+        reportStartDatePicker = new DatePicker();
+        reportStartDatePicker.setPromptText("Start date");
+        reportEndDatePicker = new DatePicker();
+        reportEndDatePicker.setPromptText("End date");
+        reportRangeLabel = new Label("Showing all dates");
+        reportRangeLabel.getStyleClass().add("caption");
 
-        Button refreshBtn = new Button("Refresh Reports");
+        reportsTab.setUserData(new Object[]{activeTracksLabel, customerCountLabel, orderCountLabel, totalSalesLabel, reportTable, avgLabel, sumLabel, maxLabel, minLabel, pieCanvas, reportStartDatePicker, reportEndDatePicker, reportRangeLabel});
+
+        Button refreshBtn = new Button("🔄 REFRESH REPORTS");
+        refreshBtn.getStyleClass().add("neo-button-primary");
         refreshBtn.setOnAction(e -> refreshReport(reportType.getValue()));
         reportType.setOnAction(e -> refreshReport(reportType.getValue()));
 
-        Button exportPieBtn = new Button("Export Chart Data (txt)");
+        Button exportPieBtn = new Button("📊 EXPORT CHART DATA");
+        exportPieBtn.getStyleClass().add("neo-button-secondary");
         exportPieBtn.setOnAction(e -> {
             if (lastPieData.isEmpty()) { showError("No chart data to export. Select a report first."); return; }
-            exportTableToTxt(lastPieTitle, new String[]{"Category", "Value"}, lastPieData);
+            exportService.exportTableToTxt(lastPieTitle, new String[]{"Category", "Value"}, lastPieData, tabPane.getScene().getWindow());
         });
 
-        Button exportUserListBtn = new Button("Export User List (txt)");
-        exportUserListBtn.setOnAction(e -> exportUserList());
+        Button exportUserListBtn = new Button("👥 EXPORT USERS");
+        exportUserListBtn.getStyleClass().add("neo-button-outline");
+        exportUserListBtn.setOnAction(e -> exportService.exportUserList(tabPane.getScene().getWindow()));
 
-        // left Column (2/3 Width)
+        Button clearRangeBtn = new Button("❌ CLEAR RANGE");
+        clearRangeBtn.getStyleClass().add("neo-button-ghost");
+        clearRangeBtn.setOnAction(e -> {
+            reportStartDatePicker.setValue(null);
+            reportEndDatePicker.setValue(null);
+            refreshReport(reportType.getValue());
+        });
+
+        // left column: flexible report visual area
         VBox leftColumn = new VBox(15);
         leftColumn.setPadding(new Insets(10));
-        HBox.setHgrow(leftColumn, Priority.ALWAYS); // allow the left column to take up remaining flexible space
+        leftColumn.setMinWidth(520);
 
-        // top Left: dropdown menu
+        // top left: dropdown menu
         HBox controlsBox = new HBox(10, new Label("Select Report:"), reportType);
         controlsBox.setAlignment(Pos.CENTER_LEFT);
+        controlsBox.getStyleClass().add("report-filter-bar");
+
+        HBox rangeBox = new HBox(10, new Label("Start:"), reportStartDatePicker, new Label("End:"), reportEndDatePicker, clearRangeBtn);
+        rangeBox.setAlignment(Pos.CENTER_LEFT);
+        rangeBox.getStyleClass().add("report-filter-bar");
 
         // middle-top left: chart area
-        VBox chartCard = new VBox(10, new Label("📊 Sales Chart"), pieCanvas);
-        chartCard.setStyle("-fx-background-color: white; -fx-border-color: #e0e0e0; -fx-border-radius: 5; -fx-padding: 15;");
+        VBox chartCard = new VBox(10, new Label("📊 Sales Chart"), canvasPane);
+        VBox.setVgrow(canvasPane, Priority.ALWAYS);  // Let the canvasPane fill the remaining space of chartCard
+        chartCard.getStyleClass().add("report-panel");
+        chartCard.getStyleClass().add("report-chart-container");
         chartCard.setAlignment(Pos.CENTER);
+        chartCard.setPrefHeight(420);
+        chartCard.setMinHeight(320);
+        // cap the chart container size to avoid propagating extremely large layout sizes to the Canvas
+        chartCard.setMaxWidth(MAX_CANVAS_DIM);
+        chartCard.setMaxHeight(MAX_CANVAS_DIM);
 
         // bottom left: table area
         VBox tableCard = new VBox(10, new Label("📋 Report Table"), reportTable);
-        tableCard.setStyle("-fx-background-color: white; -fx-border-color: #e0e0e0; -fx-border-radius: 5; -fx-padding: 15;");
+        tableCard.getStyleClass().add("report-panel");
+        tableCard.getStyleClass().add("report-table-container");
+        VBox.setVgrow(reportTable, Priority.ALWAYS);
         VBox.setVgrow(tableCard, Priority.ALWAYS);
+        tableCard.setPrefHeight(240);
+        tableCard.setMinHeight(190);
 
-        leftColumn.getChildren().addAll(controlsBox, chartCard, tableCard);
+        VBox.setVgrow(chartCard, Priority.ALWAYS);
 
-        // right Column (1/3 Width)
+        leftColumn.getChildren().addAll(controlsBox, rangeBox, reportRangeLabel, chartCard, tableCard);
+
+        // right column: metrics and report actions
         VBox rightColumn = new VBox(20);
         rightColumn.setPadding(new Insets(10));
-        rightColumn.setPrefWidth(300); // Fix a rough width, allowing the left column to auto-adjust
+        rightColumn.setPrefWidth(280);
         rightColumn.setMinWidth(250);
 
-        // top Right: summary card
+        // top right: summary card
         VBox summaryCard = new VBox(12,
                 new Label("📌 Summary Card"),
                 new Separator(),
@@ -696,31 +836,53 @@ public class AdminMainController {
                 orderCountLabel,
                 totalSalesLabel
         );
-        summaryCard.setStyle("-fx-background-color: #f8f9fa; -fx-border-color: #e0e0e0; -fx-border-radius: 5; -fx-padding: 15;");
+        summaryCard.getStyleClass().add("report-metric-card");
 
         // middle right: statistics card
         VBox statsCard = new VBox(12, new Label("📈 Statistics"), new Separator(), avgLabel, sumLabel, maxLabel, minLabel);
-        statsCard.setStyle("-fx-background-color: #f8f9fa; -fx-border-color: #e0e0e0; -fx-border-radius: 5; -fx-padding: 15;");
+        statsCard.getStyleClass().add("report-metric-card");
 
         // bottom right: action buttons
         VBox actionCard = new VBox(10, refreshBtn, exportPieBtn, exportUserListBtn);
         actionCard.setAlignment(Pos.CENTER_LEFT);
+        actionCard.getStyleClass().add("report-panel");
 
         rightColumn.getChildren().addAll(summaryCard, statsCard, actionCard);
 
-        // assemble the main container
-        HBox mainSplitContent = new HBox(15, leftColumn, rightColumn);
-        mainSplitContent.setPadding(new Insets(15));
+        SplitPane splitPane = new SplitPane(leftColumn, rightColumn);
+        splitPane.setDividerPositions(0.72);
+        splitPane.setPadding(new Insets(15));
+        splitPane.setOrientation(javafx.geometry.Orientation.HORIZONTAL);
+        splitPane.setPrefHeight(760);
+
+        ScrollPane reportScrollPane = new ScrollPane(splitPane);
+        reportScrollPane.setFitToWidth(true);
+        reportScrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        reportScrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        reportScrollPane.getStyleClass().add("report-scroll-pane");
 
         // return the outermost VBox
-        VBox mainBox = new VBox(mainSplitContent);
-        VBox.setVgrow(mainSplitContent, Priority.ALWAYS);
+        VBox mainBox = new VBox(reportScrollPane);
+        VBox.setVgrow(reportScrollPane, Priority.ALWAYS);
         return mainBox;
+    }
+
+    // FIX: coalesce rapid resize events into a single redraw on the next JavaFX pulse.
+    // Without this, each pixel of resize triggers a separate clearRect + redraw which
+    // can race with refreshReport and leave the canvas blank.
+    private void scheduleRedraw(Canvas canvas) {
+        if (!redrawPending) {
+            redrawPending = true;
+            Platform.runLater(() -> {
+                redrawPending = false;
+                redrawCachedPieChart(canvas);
+            });
+        }
     }
 
     private void refreshReport(String reportType) {
         Object[] data = (Object[]) reportsTab.getUserData();
-        if (data == null || data.length < 10){
+        if (data == null || data.length < 13){
             return;
         }
 
@@ -732,19 +894,43 @@ public class AdminMainController {
         TableView<String> reportTable = (TableView<String>) data[4];
         Label avgLabel = (Label) data[5], sumLabel = (Label) data[6], maxLabel = (Label) data[7], minLabel = (Label) data[8];
         Canvas pieCanvas = (Canvas) data[9];
+        DatePicker startPicker = (DatePicker) data[10];
+        DatePicker endPicker = (DatePicker) data[11];
+        Label rangeLabel = (Label) data[12];
 
+        LocalDate startDate = startPicker.getValue();
+        LocalDate endDate = endPicker.getValue();
+
+        if (startDate != null && endDate != null && startDate.isAfter(endDate)) {
+            showError("Start date must be on or before end date.");
+            return;
+        }
+
+        if (startDate != null || endDate != null) {
+            rangeLabel.setText("Date range: " + (startDate != null ? startDate : "…") + " to " + (endDate != null ? endDate : "…"));
+        } else {
+            rangeLabel.setText("Showing all dates");
+        }
+
+        String orderDateClause = buildOrderDateClause("o.order_date", startDate, endDate);
         String summarySql = "SELECT "
-                + "(SELECT COUNT(*) FROM tracks WHERE is_active = 1) AS active_tracks, " + "(SELECT COUNT(*) FROM customers) AS customers, "
-                + "(SELECT COUNT(*) FROM orders) AS orders, " + "(SELECT COALESCE(SUM(total_amount), 0) FROM orders) AS total_sales";
+                + "(SELECT COUNT(*) FROM tracks WHERE is_active = 1) AS active_tracks, "
+                + "(SELECT COUNT(*) FROM customers) AS customers, "
+                + "(SELECT COUNT(*) FROM orders o WHERE 1=1" + orderDateClause + ") AS orders, "
+                + "(SELECT COALESCE(SUM(total_amount), 0) FROM orders o WHERE 1=1" + orderDateClause + ") AS total_sales";
 
         try (Connection conn = DBConnectionManager.getConnection();
-             PreparedStatement ps = conn.prepareStatement(summarySql);
-             ResultSet rs = ps.executeQuery()) {
-            if (rs.next()) {
-                activeTracksLabel.setText("Active Tracks: " + rs.getInt("active_tracks"));
-                customerCountLabel.setText("Customers: " + rs.getInt("customers"));
-                orderCountLabel.setText("Orders: " + rs.getInt("orders"));
-                totalSalesLabel.setText("Total Sales: " + rs.getBigDecimal("total_sales"));
+             PreparedStatement ps = conn.prepareStatement(summarySql)) {
+            int bindIndex = 1;
+            bindIndex = bindOrderDateClause(ps, bindIndex, startDate, endDate);
+            bindIndex = bindOrderDateClause(ps, bindIndex, startDate, endDate);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    activeTracksLabel.setText("Active Tracks: " + rs.getInt("active_tracks"));
+                    customerCountLabel.setText("Customers: " + rs.getInt("customers"));
+                    orderCountLabel.setText("Orders: " + rs.getInt("orders"));
+                    totalSalesLabel.setText("Total Sales: " + rs.getBigDecimal("total_sales"));
+                }
             }
         } catch (SQLException e) {
             LOGGER.log(Level.SEVERE, "Failed to load report summary", e);
@@ -752,7 +938,7 @@ public class AdminMainController {
             return;
         }
 
-        loadSalesReport(reportType, reportTable, avgLabel, sumLabel, maxLabel, minLabel, pieCanvas);
+        loadSalesReport(reportType, reportTable, avgLabel, sumLabel, maxLabel, minLabel, pieCanvas, startDate, endDate);
     }
 
     // colours used for the pie chart slices
@@ -762,66 +948,91 @@ public class AdminMainController {
             Color.web("#b07aa1"), Color.web("#ff9da7"), Color.web("#9c755f")
     };
 
-    private void loadSalesReport(String reportType, TableView<String> reportTable, Label avgLabel, Label sumLabel, Label maxLabel, Label minLabel, Canvas pieCanvas) {
+    // Maximum canvas texture dimension to avoid exceeding GPU limits (some GPUs cap at 16384)
+    private static final double MAX_CANVAS_DIM = 16000.0;
+
+    private void loadSalesReport(String reportType, TableView<String> reportTable, Label avgLabel, Label sumLabel, Label maxLabel, Label minLabel, Canvas pieCanvas, LocalDate startDate, LocalDate endDate) {
         String sql;
         switch (reportType) {
             case "Sales by Genre":
-                sql = "SELECT t.genre, SUM(oi.quantity), SUM(oi.line_total) FROM order_items oi JOIN tracks t ON oi.track_id = t.id GROUP BY t.genre ORDER BY 3 DESC";
+                sql = "SELECT t.genre, SUM(oi.quantity), SUM(oi.line_total) "
+                        + "FROM order_items oi JOIN tracks t ON oi.track_id = t.id "
+                        + "JOIN orders o ON oi.order_id = o.id WHERE 1=1" + buildOrderDateClause("o.order_date", startDate, endDate)
+                        + " GROUP BY t.genre ORDER BY 3 DESC";
                 break;
             case "Sales by City":
-                sql = "SELECT o.shipping_city, COUNT(o.id), SUM(o.total_amount) FROM orders o GROUP BY o.shipping_city ORDER BY 3 DESC";
+                sql = "SELECT o.shipping_city, COUNT(o.id), SUM(o.total_amount) FROM orders o WHERE 1=1"
+                        + buildOrderDateClause("o.order_date", startDate, endDate)
+                        + " GROUP BY o.shipping_city ORDER BY 3 DESC";
                 break;
             case "Sales by Date":
-                sql = "SELECT DATE(order_date), COUNT(id), SUM(total_amount) FROM orders GROUP BY DATE(order_date) ORDER BY 1 DESC";
+                sql = "SELECT DATE(order_date), COUNT(id), SUM(total_amount) FROM orders o WHERE 1=1"
+                        + buildOrderDateClause("o.order_date", startDate, endDate)
+                        + " GROUP BY DATE(order_date) ORDER BY 1 DESC";
                 break;
             default:
+                // FIX: for "Summary" (and any other non-chart report type), clear the table and
+                // stats labels but do NOT wipe the canvas — if chart data exists from a previous
+                // selection, keep it visible. Only clear the canvas when there is genuinely nothing
+                // to show (i.e. lastChartLabels is already empty).
                 reportTable.setItems(FXCollections.observableArrayList());
                 avgLabel.setText(""); sumLabel.setText(""); maxLabel.setText(""); minLabel.setText("");
-                clearPieCanvas(pieCanvas);
+                if (lastChartLabels.isEmpty()) {
+                    clearPieCanvas(pieCanvas);
+                }
                 return;
         }
 
-        try (Connection conn = DBConnectionManager.getConnection(); // ensure proper resource management
-             PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
+        try (Connection conn = DBConnectionManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            bindOrderDateClause(ps, 1, startDate, endDate);
+            try (ResultSet rs = ps.executeQuery()) {
 
-            ObservableList<String> rows = FXCollections.observableArrayList();
-            List<String> labels = new ArrayList<>();
-            List<Double> values = new ArrayList<>();
-            double sum = 0, max = Double.MIN_VALUE, min = Double.MAX_VALUE;
-            int count = 0;
+                ObservableList<String> rows = FXCollections.observableArrayList();
+                List<String> labels = new ArrayList<>();
+                List<Double> values = new ArrayList<>();
+                double sum = 0, max = Double.MIN_VALUE, min = Double.MAX_VALUE;
+                int count = 0;
 
-            lastPieData.clear();
-            lastPieTitle = reportType;
+                lastPieData.clear();
+                lastPieTitle = reportType;
 
-            while (rs.next()) {
-                double value = rs.getDouble(3);
-                String label = rs.getString(1);
-                sum += value; max = Math.max(max, value); min = Math.min(min, value); count++;
-                rows.add(String.format("%s: %.2f", label, value));
-                labels.add(label);
-                values.add(value);
-                lastPieData.add(new String[]{label, String.format("%.2f", value)});
+                while (rs.next()) {
+                    double value = rs.getDouble(3);
+                    String label = rs.getString(1);
+                    sum += value; max = Math.max(max, value); min = Math.min(min, value); count++;
+                    rows.add(String.format("%s: %.2f", label, value));
+                    labels.add(label);
+                    values.add(value);
+                    lastPieData.add(new String[]{label, String.format("%.2f", value)});
+                }
+
+                reportTable.getColumns().clear();
+                TableColumn<String, String> resultCol = new TableColumn<>("Result");
+                resultCol.setCellValueFactory(p -> new SimpleStringProperty(p.getValue())); // single column with the formatted string result
+                reportTable.getColumns().add(resultCol);
+                reportTable.setItems(rows);
+
+                if (count > 0) {
+                    avgLabel.setText(String.format("Average: %.2f", sum / count));
+                    sumLabel.setText(String.format("Total: %.2f", sum));
+                    maxLabel.setText(String.format("Maximum: %.2f", max));
+                    minLabel.setText(String.format("Minimum: %.2f", min));
+                    lastChartLabels.clear();
+                    lastChartLabels.addAll(labels);
+                    lastChartValues.clear();
+                    lastChartValues.addAll(values);
+                    lastChartType = reportType;
+                    drawPieChart(pieCanvas, labels, values, reportType);
+                } else {
+                    // no data returned — clear everything including the canvas
+                    avgLabel.setText(""); sumLabel.setText(""); maxLabel.setText(""); minLabel.setText("");
+                    lastChartLabels.clear();
+                    lastChartValues.clear();
+                    lastChartType = "";
+                    clearPieCanvas(pieCanvas);
+                }
             }
-
-            reportTable.getColumns().clear();
-            TableColumn<String, String> resultCol = new TableColumn<>("Result");
-            resultCol.setCellValueFactory(p -> new SimpleStringProperty(p.getValue())); // single column with the formatted string result
-            reportTable.getColumns().add(resultCol);
-            reportTable.setItems(rows);
-
-            // counting the basic data that we want
-            if (count > 0) {
-                avgLabel.setText(String.format("Average: %.2f", sum / count));
-                sumLabel.setText(String.format("Total: %.2f", sum));
-                maxLabel.setText(String.format("Maximum: %.2f", max));
-                minLabel.setText(String.format("Minimum: %.2f", min));
-                drawPieChart(pieCanvas, labels, values, reportType);
-            } else {
-                avgLabel.setText(""); sumLabel.setText(""); maxLabel.setText(""); minLabel.setText(""); // if no data, clear the stats labels and the pie chart
-                clearPieCanvas(pieCanvas);
-            }
-
         } catch (SQLException e) {
             LOGGER.log(Level.SEVERE, "Failed to load sales report", e);
             showError("Failed to load sales report: " + e.getMessage());
@@ -831,12 +1042,45 @@ public class AdminMainController {
     // drawing pie chart with legend on the given Canvas.
     private void drawPieChart(Canvas canvas, List<String> labels, List<Double> values, String title) {
         GraphicsContext gc = canvas.getGraphicsContext2D();
-        gc.clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
+        double width = canvas.getWidth();
+        double height = canvas.getHeight();
+        // Use clamped drawing dimensions to avoid arithmetic or texture allocation issues
+        double drawWidth = Math.min(width, MAX_CANVAS_DIM);
+        double drawHeight = Math.min(height, MAX_CANVAS_DIM);
+        gc.clearRect(0, 0, drawWidth, drawHeight);
 
         double total = values.stream().mapToDouble(Double::doubleValue).sum();
-        if (total == 0) return;
+        if (labels == null || labels.isEmpty() || total <= 0) {
+            // draw a clear "no data" message so it's obvious why nothing appears
+            try {
+                gc.setFill(Color.web("#fafafa"));
+                gc.fillRect(0, 0, width, height);
+                gc.setFill(Color.web("#666666"));
+                gc.setFont(Font.font("System", FontWeight.BOLD, 14));
+                gc.setTextAlign(javafx.scene.text.TextAlignment.CENTER);
+                gc.setTextBaseline(javafx.geometry.VPos.CENTER);
+                gc.fillText("No chart data to display", width / 2.0, height / 2.0);
+            } catch (Exception ex) {
+                LOGGER.log(Level.WARNING, "Failed to render 'no data' message on pie canvas", ex);
+            }
+            return;
+        }
 
-        double cx = 120, cy = 130, r = 110;
+        boolean legendBelow = width < 760;
+        double pieAreaWidth = legendBelow ? width : width * 0.58;
+        double legendStartX = legendBelow ? 18 : pieAreaWidth + 14;
+        double legendWidth = legendBelow ? width - 36 : width - legendStartX - 16;
+        double topMargin = 20;
+        // when legend is below on narrow screens, render it as a two-column grid to save vertical space
+        int legendColumns = legendBelow ? Math.min(2, Math.max(1, labels.size())) : 1;
+        int itemsPerColumn = legendBelow ? (labels.size() + legendColumns - 1) / legendColumns : labels.size();
+        double legendRowHeight = 22.0;
+        double legendReservedHeight = legendBelow ? Math.min(height * 0.45, Math.max(100, itemsPerColumn * legendRowHeight + 36)) : 0;
+        double pieAreaHeight = legendBelow ? height - legendReservedHeight - 16 : height - 20;
+
+        double r = Math.max(55, Math.min(pieAreaWidth * 0.30, pieAreaHeight * 0.34));
+        double cx = legendBelow ? width / 2.0 : pieAreaWidth / 2.0;
+        double cy = topMargin + pieAreaHeight / 2.0;
         double startAngle = -90;
 
         // draw slices
@@ -844,144 +1088,101 @@ public class AdminMainController {
             double sweep = (values.get(i) / total) * 360.0;
             gc.setFill(PIE_COLORS[i % PIE_COLORS.length]);
             gc.fillArc(cx - r, cy - r, r * 2, r * 2, startAngle, sweep, javafx.scene.shape.ArcType.ROUND);
-            // thin white border
+            // thin white border between slices
             gc.setStroke(Color.WHITE); gc.setLineWidth(1.5);
             gc.strokeArc(cx - r, cy - r, r * 2, r * 2, startAngle, sweep, javafx.scene.shape.ArcType.ROUND);
             startAngle += sweep;
         }
 
-        // draw legend on right side
-        gc.setFont(Font.font("System", FontWeight.BOLD, 13));
+        // draw legend in a responsive area (right side on wide view, bottom on narrow view)
+        Font legendTitleFont = Font.font("System", FontWeight.BOLD, 13);
+        Font legendItemFont = Font.font("System", 11);
+        gc.setFont(legendTitleFont);
         gc.setFill(Color.BLACK);
-        gc.fillText(title, 250, 20);
-        gc.setFont(Font.font("System", 11));
+        gc.fillText(title, legendStartX, legendBelow ? (pieAreaHeight + 14) : 20);
+        gc.setFont(legendItemFont);
 
+        double legendBaseY = legendBelow ? (pieAreaHeight + 34) : 40;
+
+        // draw legend items; when in narrow view, layout in multiple columns (two by default)
+        double colWidth = legendWidth / legendColumns;
         for (int i = 0; i < labels.size(); i++) {
-            double ly = 40 + i * 22;
+            int col = legendBelow ? (i / itemsPerColumn) : 0;
+            int row = legendBelow ? (i % itemsPerColumn) : i;
+            double ly = legendBaseY + row * legendRowHeight;
+            double lx = legendStartX + col * colWidth;
+
             gc.setFill(PIE_COLORS[i % PIE_COLORS.length]);
-            gc.fillRect(250, ly, 14, 14);
+            gc.fillRect(lx, ly, 14, 14);
             gc.setFill(Color.BLACK);
             double pct = (values.get(i) / total) * 100;
             String lbl = labels.get(i);
             if (lbl == null || lbl.isEmpty()) lbl = "(None)";
-            if (lbl.length() > 14) lbl = lbl.substring(0, 13) + "…";
-            gc.fillText(String.format("%s (%.1f%%)", lbl, pct), 268, ly + 12);
+            String legendText = String.format("%s (%.1f%%)", lbl, pct);
+            // constrain text to the column width (leave space for color box and padding)
+            double maxTextWidth = Math.max(80, colWidth - 26);
+            legendText = fitTextToWidth(legendText, legendItemFont, maxTextWidth);
+            gc.fillText(legendText, lx + 18, ly + 12);
         }
+    }
+
+    private void redrawCachedPieChart(Canvas canvas) {
+        if (lastChartLabels.isEmpty() || lastChartValues.isEmpty()) {
+            clearPieCanvas(canvas);
+            return;
+        }
+        drawPieChart(canvas, lastChartLabels, lastChartValues, lastChartType);
+    }
+
+    private String fitTextToWidth(String text, Font font, double maxWidth) {
+        Text helper = new Text(text);
+        helper.setFont(font);
+        if (helper.getLayoutBounds().getWidth() <= maxWidth) {
+            return text;
+        }
+
+        String ellipsis = "...";
+        int low = 0;
+        int high = text.length();
+        String best = ellipsis;
+
+        while (low <= high) {
+            int mid = (low + high) >>> 1;
+            String candidate = text.substring(0, Math.max(0, mid)) + ellipsis;
+            helper.setText(candidate);
+            if (helper.getLayoutBounds().getWidth() <= maxWidth) {
+                best = candidate;
+                low = mid + 1;
+            } else {
+                high = mid - 1;
+            }
+        }
+        return best;
     }
 
     private void clearPieCanvas(Canvas canvas) {
         canvas.getGraphicsContext2D().clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
     }
 
-    // txt reports
-    private void exportTableToTxt(String tableName, String[] headers, List<String[]> rows) {
-        FileChooser fc = new FileChooser();
-        fc.setTitle("Export " + tableName);
-
-        String fileTimestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy_MM_dd_HHmmss"));  // generate a current timestamp suitable for the file name
-        fc.setInitialFileName(tableName.replace(" ", "_") + "_export_" + fileTimestamp + ".txt"); // add the timestamp to the end of the file name
-
-        fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("Text Files (*.txt)", "*.txt"));
-        File file = fc.showSaveDialog(tabPane.getScene().getWindow());
-        if (file == null) return;
-
-        try (PrintWriter pw = new PrintWriter(new FileWriter(file))) {
-            String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-            pw.println("========================================");
-            pw.println("  MUSIC LIBRARY – " + tableName.toUpperCase());
-            pw.println("  Exported: " + timestamp);
-            pw.println("========================================");
-            pw.println();
-
-            // compute column widths based on display length
-            int[] widths = new int[headers.length];
-            for (int i = 0; i < headers.length; i++){
-                widths[i] = getDisplayWidth(headers[i]);
-            }
-            for (String[] row : rows) {
-                for (int i = 0; i < Math.min(row.length, headers.length); i++) {
-                    if (row[i] != null){
-                        widths[i] = Math.max(widths[i], getDisplayWidth(row[i]));
-                    }
-                }
-            }
-
-            String separator = buildSeparator(widths);
-            pw.println(separator);
-            pw.println(buildRow(headers, widths));
-            pw.println(separator);
-            for (String[] row : rows){
-                pw.println(buildRow(row, widths)); // handle null values and ensure proper spacing
-            }
-            pw.println(separator);
-            pw.println();
-            pw.println("Total records: " + rows.size());
-
-            Alert alert = new Alert(Alert.AlertType.INFORMATION, tableName + " exported successfully to:\n" + file.getAbsolutePath());
-            alert.setHeaderText("Export Complete");
-            alert.showAndWait();
-
-        } catch (IOException e) {
-            LOGGER.log(Level.SEVERE, "Export failed", e);
-            showError("Export failed: " + e.getMessage());
+    private String buildOrderDateClause(String column, LocalDate startDate, LocalDate endDate) {
+        StringBuilder clause = new StringBuilder();
+        if (startDate != null) {
+            clause.append(" AND DATE(").append(column).append(") >= ?");
         }
+        if (endDate != null) {
+            clause.append(" AND DATE(").append(column).append(") <= ?");
+        }
+        return clause.toString();
     }
 
-    private String buildSeparator(int[] widths) {
-        StringBuilder sb = new StringBuilder("+");
-        for (int w : widths) {
-            sb.append("-".repeat(w + 2)).append("+"); // create separator line, adding 2 for the spaces around the content in each cell
+    private int bindOrderDateClause(PreparedStatement ps, int index, LocalDate startDate, LocalDate endDate) throws SQLException {
+        if (startDate != null) {
+            ps.setDate(index++, java.sql.Date.valueOf(startDate));
         }
-        return sb.toString();
-    }
-
-    private String buildRow(String[] cells, int[] widths) {
-        StringBuilder sb = new StringBuilder("|");
-        for (int i = 0; i < widths.length; i++) {
-            String cell = (i < cells.length && cells[i] != null) ? cells[i] : ""; // handle null values by treating them as empty strings
-            int padding = widths[i] - getDisplayWidth(cell); // calculate how many spaces need to be filled
-            sb.append(" ").append(cell).append(" ".repeat(Math.max(0, padding))).append(" |"); // manually fill the content and spaces, abandoning the use of String.format that causes misalignment
+        if (endDate != null) {
+            ps.setDate(index++, java.sql.Date.valueOf(endDate));
         }
-        return sb.toString();
-    }
-
-    // calculate the visual width of a string (2 for full-width characters, 1 for half-width)
-    // to fix misaligned if sometimes name of the song is too long which will looks wrong in tables
-    private int getDisplayWidth(String str) {
-        if (str == null) return 0;
-        int width = 0;
-        for (int i = 0; i < str.length(); i++) {
-            char c = str.charAt(i);
-            // matches most of the Unicode range in Chinese, Japanese, and Korean with full-width punctuation
-            if ((c >= 0x2E80 && c <= 0xFE4F) || (c >= 0xFF00 && c <= 0xFFEF)) {
-                width += 2;
-            } else {
-                width += 1;
-            }
-        }
-        return width;
-    }
-
-    // export the users table from the database.
-    private void exportUserList() {
-        String sql = "SELECT id, username, role FROM users ORDER BY id";
-        List<String[]> rows = new ArrayList<>();
-        try (Connection conn = DBConnectionManager.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
-            while (rs.next()) {
-                rows.add(new String[]{
-                        String.valueOf(rs.getInt("id")),
-                        rs.getString("username"),
-                        rs.getString("role")
-                });
-            }
-        } catch (SQLException e) {
-            LOGGER.log(Level.SEVERE, "Failed to fetch user list", e);
-            showError("Failed to fetch user list: " + e.getMessage());
-            return;
-        }
-        exportTableToTxt("Users", new String[]{"ID", "Username", "Role"}, rows);
+        return index;
     }
 
     // logout
@@ -993,8 +1194,10 @@ public class AdminMainController {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/LoginView.fxml"));
             Scene loginScene = new Scene(loader.load(), MusicLibraryApp.LOGIN_SCENE_WIDTH, MusicLibraryApp.LOGIN_SCENE_HEIGHT);
             stage.setScene(loginScene); // switch back to login scene
+            stage.setMaximized(false);
             stage.setMinWidth(MusicLibraryApp.LOGIN_MIN_WIDTH);
             stage.setMinHeight(MusicLibraryApp.LOGIN_MIN_HEIGHT);
+            stage.setResizable(true);
             stage.setWidth(MusicLibraryApp.LOGIN_SCENE_WIDTH);
             stage.setHeight(MusicLibraryApp.LOGIN_SCENE_HEIGHT);
             stage.centerOnScreen();
@@ -1005,8 +1208,68 @@ public class AdminMainController {
     }
 
     private void showError(String message) {
-        Alert alert = new Alert(Alert.AlertType.ERROR, message);
-        alert.setHeaderText("Admin Error");
-        alert.showAndWait();
+        showStyledDialog("Error", message, "error");
+    }
+
+    private void showSuccess(String message) {
+        showStyledDialog("Success", message, "success");
+    }
+
+    private void showInfo(String message) {
+        showStyledDialog("Information", message, "info");
+    }
+
+    private void showStyledDialog(String title, String message, String type) {
+        Stage dialog = new Stage();
+        dialog.initModality(Modality.APPLICATION_MODAL);
+        dialog.setTitle(title);
+
+        Label titleLabel = new Label(title.toUpperCase());
+        titleLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: 900; -fx-text-fill: #000000;");
+
+        Label messageLabel = new Label(message);
+        messageLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: #000000; -fx-font-weight: 700;");
+        messageLabel.setWrapText(true);
+        messageLabel.setMaxWidth(400);
+
+        VBox content = new VBox(8);
+        content.setPadding(new Insets(16));
+        content.getChildren().addAll(titleLabel, new Separator(), messageLabel);
+
+        if ("error".equals(type)) {
+            content.setStyle("-fx-background-color: #FFE0E0; -fx-border-color: #FF6B6B; " +
+                    "-fx-border-width: 4; -fx-padding: 16;");
+            titleLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: 900; -fx-text-fill: #FF6B6B;");
+        } else if ("success".equals(type)) {
+            content.setStyle("-fx-background-color: #E8F5E9; -fx-border-color: #054d28; " +
+                    "-fx-border-width: 4; -fx-padding: 16;");
+            titleLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: 900; -fx-text-fill: #054d28;");
+        } else {
+            content.setStyle("-fx-background-color: #E3F2FD; -fx-border-color: #0066cc; " +
+                    "-fx-border-width: 4; -fx-padding: 16;");
+            titleLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: 900; -fx-text-fill: #0066cc;");
+        }
+
+        Button okBtn = new Button("✓ OK");
+        okBtn.getStyleClass().add("neo-button-primary");
+        okBtn.setOnAction(e -> dialog.close());
+        okBtn.setStyle("-fx-min-width: 100;");
+
+        HBox buttonBox = new HBox();
+        buttonBox.setAlignment(Pos.CENTER);
+        buttonBox.setPadding(new Insets(12, 16, 16, 16));
+        buttonBox.getChildren().add(okBtn);
+
+        VBox mainLayout = new VBox();
+        mainLayout.setStyle("-fx-background-color: #FFFFFF;");
+        mainLayout.getChildren().addAll(content, buttonBox);
+
+        Scene scene = new Scene(mainLayout);
+        scene.getStylesheets().add(getClass().getResource("/css/app.css").toExternalForm());
+        dialog.setScene(scene);
+        dialog.setMinWidth(440);
+        dialog.setMinHeight(240);
+        dialog.sizeToScene();
+        dialog.showAndWait();
     }
 }

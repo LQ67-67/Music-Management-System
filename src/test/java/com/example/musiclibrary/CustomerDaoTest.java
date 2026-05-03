@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.*;
 public class CustomerDaoTest {
     private final CustomerDao customerDao = new CustomerDao();
 
-    @Test
+    @Test // checks whether all customers can be retrieved
     public void testFindAll() {
         try {
             List<Customer> customers = customerDao.findAll();
@@ -21,7 +21,7 @@ public class CustomerDaoTest {
         }
     }
 
-    @Test
+    @Test // checks whether a new customer can be created and then found.
     public void testCreate() {
         try {
             Customer customer = new Customer();
@@ -40,7 +40,7 @@ public class CustomerDaoTest {
         }
     }
 
-    @Test
+    @Test // checks whether customer information is updated in the database
     public void testUpdate() {
         try {
             Customer customer = new Customer();
@@ -64,7 +64,7 @@ public class CustomerDaoTest {
         }
     }
 
-    @Test
+    @Test // checks whether the deleted customer no longer appears
     public void testDelete() {
         try {
             Customer customer = new Customer();

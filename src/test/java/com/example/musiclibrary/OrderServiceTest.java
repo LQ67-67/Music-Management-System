@@ -21,7 +21,7 @@ public class OrderServiceTest {
     private final OrderItemDao orderItemDao = new OrderItemDao();
     private final TrackDao trackDao = new TrackDao();
 
-    @Test
+    @Test // check whether an order can be created successfully and whether its status is `PENDING`
     public void testCreateOrder() {
         try {
             // test track
@@ -62,7 +62,7 @@ public class OrderServiceTest {
         }
     }
 
-    @Test
+    @Test // check whether the system rejects an order when stock is insufficient
     public void testCreateOrderWithInsufficientStock() {
         try {
             // create test track with low stock

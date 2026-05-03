@@ -10,7 +10,7 @@ public class UserDaoTest {
 
     private final UserDao userDao = new UserDao();
 
-    @Test
+    @Test // check whether the admin user can be found by username
     public void testFindByUsername() {
         try {
             User user = userDao.findByUsername("admin"); // new admin
@@ -21,7 +21,7 @@ public class UserDaoTest {
         }
     }
 
-    @Test
+    @Test // check whether a new user can be created and whether the role is correct
     public void testCreate() {
         try {
             String username = "testuser_" + System.currentTimeMillis();
@@ -36,7 +36,7 @@ public class UserDaoTest {
         }
     }
 
-    @Test
+    @Test // check whether the system throws an error when a duplicate username is used
     public void testCreateDuplicateUsername() {
         try {
             String duplicateUsername = "duplicate_" + System.currentTimeMillis();

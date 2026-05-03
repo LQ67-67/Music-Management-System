@@ -7,6 +7,7 @@
 <?import javafx.scene.control.TabPane?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
 
 <BorderPane xmlns="http://javafx.com/javafx"
             xmlns:fx="http://javafx.com/fxml"
@@ -16,14 +17,15 @@
             prefHeight="864.0">
 
     <top>
-        <HBox spacing="10">
+        <HBox spacing="10" styleClass="header-bar">
             <padding>
                 <Insets top="10" right="10" bottom="10" left="10"/>
             </padding>
             <children>
-                <Label text="Music Library - Admin" styleClass="title-label"/>
-                <Label fx:id="welcomeLabel"/>
-                <Button text="Logout" onAction="#handleLogout"/>
+                <Label text="🎛️ ADMIN CONTROL PANEL" styleClass="title-label header-title"/>
+                <Label fx:id="welcomeLabel" styleClass="header-welcome"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Button text="🚪 LOGOUT" onAction="#handleLogout" styleClass="neo-button-danger"/>
             </children>
         </HBox>
     </top>
@@ -31,10 +33,10 @@
     <center>
         <TabPane fx:id="tabPane">
             <tabs>
-                <Tab fx:id="tracksTab" text="Tracks" closable="false"/>
-                <Tab fx:id="customersTab" text="Customers" closable="false"/>
-                <Tab fx:id="ordersTab" text="Orders" closable="false"/>
-                <Tab fx:id="reportsTab" text="Reports" closable="false"/>
+                <Tab fx:id="tracksTab" text="🎵 TRACKS" closable="false"/>
+                <Tab fx:id="customersTab" text="👥 CUSTOMERS" closable="false"/>
+                <Tab fx:id="ordersTab" text="📦 ORDERS" closable="false"/>
+                <Tab fx:id="reportsTab" text="📊 REPORTS" closable="false"/>
             </tabs>
         </TabPane>
     </center>

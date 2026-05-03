@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.*;
 public class TrackDaoTest {
     private final TrackDao trackDao = new TrackDao();
 
-    @Test
+    @Test // check whether all active tracks can be retrieved
     public void testFindAllActive() {
         try {
             List<Track> tracks = trackDao.findAllActive(); // only active tracks
@@ -22,7 +22,7 @@ public class TrackDaoTest {
         }
     }
 
-    @Test
+    @Test // check whether a created track can be found by its ID
     public void testCreateAndFind() {
         try {
             Track track = new Track();
@@ -44,7 +44,7 @@ public class TrackDaoTest {
         }
     }
 
-    @Test
+    @Test // check whether the track price is updated in the database
     public void testUpdate() {
         try {
             Track track = new Track();
@@ -68,7 +68,7 @@ public class TrackDaoTest {
         }
     }
 
-    @Test
+    @Test // check whether the track becomes inactive after deletion
     public void testDelete() {
         try {
             Track track = new Track();
