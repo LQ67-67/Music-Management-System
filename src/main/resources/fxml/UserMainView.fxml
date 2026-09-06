@@ -24,11 +24,11 @@
                 <Insets top="10" right="10" bottom="10" left="10"/>
             </padding>
             <children>
-                <Label text="🎵 MUSIC LIBRARY STORE" styleClass="title-label header-title"/>
+                <Label text="MUSIC LIBRARY // STORE" styleClass="title-label header-title"/>
                 <Label fx:id="welcomeLabel" styleClass="header-welcome"/>
                 <Region HBox.hgrow="ALWAYS"/>
-                <Button text="⚙️ PROFILE" onAction="#handleEditProfile" styleClass="neo-button-secondary"/>
-                <Button text="🚪 LOGOUT" onAction="#handleLogout" styleClass="neo-button-danger"/>
+                <Button text="PROFILE" onAction="#handleEditProfile" styleClass="neo-button-secondary"/>
+                <Button text="LOGOUT →" onAction="#handleLogout" styleClass="neo-button-danger"/>
             </children>
         </HBox>
     </top>

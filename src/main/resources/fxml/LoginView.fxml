@@ -9,6 +9,7 @@
 <?import javafx.scene.layout.ColumnConstraints?>
 <?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.RowConstraints?>
 <?import javafx.scene.layout.VBox?>
 
@@ -16,58 +17,75 @@
           xmlns="http://javafx.com/javafx"
           xmlns:fx="http://javafx.com/fxml"
           stylesheets="@../css/app.css"
-          hgap="10" vgap="8"
-          prefWidth="600.0"
-          prefHeight="500.0">
-    <padding>
-        <Insets top="20" right="20" bottom="20" left="20"/>
-    </padding>
+          styleClass="login-root"
+          prefWidth="820.0"
+          prefHeight="520.0">
 
     <columnConstraints>
-        <ColumnConstraints percentWidth="30"/>
-        <ColumnConstraints percentWidth="70"/>
+        <ColumnConstraints percentWidth="40"/>
+        <ColumnConstraints percentWidth="60"/>
     </columnConstraints>
-    <rowConstraints>
-        <RowConstraints minHeight="30"/>
-        <RowConstraints minHeight="30"/>
-        <RowConstraints minHeight="20"/>
-        <RowConstraints minHeight="30"/>
-        <RowConstraints minHeight="20"/>
-        <RowConstraints minHeight="30"/>
-        <RowConstraints minHeight="60"/>
-        <RowConstraints minHeight="30"/>
-        <RowConstraints minHeight="20"/>
-        <RowConstraints minHeight="30"/>
-    </rowConstraints>
 
-    <Label text="Music Library Login" styleClass="title-label" GridPane.columnSpan="2" GridPane.rowIndex="0"/>
-
-    <Label text="Username:" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
-    <TextField fx:id="usernameField" promptText="Enter username" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
-
-    <Label text="(Max 20 chars)" styleClass="hint-label" GridPane.rowIndex="2" GridPane.columnIndex="1" GridPane.halignment="RIGHT"/>
-
-    <Label text="Password:" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
-    <HBox spacing="6" GridPane.rowIndex="3" GridPane.columnIndex="1">
-        <PasswordField fx:id="passwordField" promptText="Enter password" HBox.hgrow="ALWAYS"/>
-        <TextField fx:id="passwordShowField" promptText="Enter password" visible="false" managed="false" HBox.hgrow="ALWAYS"/>
-        <Button fx:id="togglePasswordBtn" text="👁️" styleClass="icon-button" prefWidth="40"/>
-    </HBox>
-
-    <Label fx:id="passwordHintLabel" styleClass="hint-label" GridPane.rowIndex="4" GridPane.columnIndex="1"/>
-
-    <VBox spacing="4" GridPane.rowIndex="5" GridPane.columnIndex="1" GridPane.columnSpan="2">
-        <Label fx:id="passwordReqsLabel" text="Password must contain:" styleClass="small"/>
-        <Label fx:id="requirementsLabel" text="• Uppercase letter • Lowercase letter • Digit" styleClass="small" style="-fx-text-fill: #d03238;"/>
+    <!-- LEFT: mission patch / brand column -->
+    <VBox styleClass="login-side" spacing="10" GridPane.rowIndex="0" GridPane.columnIndex="0" GridPane.vgrow="ALWAYS" GridPane.fillHeight="true">
+        <Label text="MUSIC LIBRARY" styleClass="login-brand" wrapText="true"/>
+        <Label text="ORDER MANAGEMENT SYSTEM" styleClass="login-mission-tag"/>
+        <Region VBox.vgrow="ALWAYS"/>
+        <Label text="MISSION // ARCHIVE ACCESS" styleClass="login-telemetry"/>
+        <Label text="STATION: LOCAL · UPTIME: LIVE" styleClass="login-telemetry"/>
+        <Label text="CREW: OPERATORS ONLY" styleClass="login-telemetry"/>
     </VBox>
 
-    <Label fx:id="errorLabel" styleClass="error-label" GridPane.rowIndex="6" GridPane.columnIndex="0" GridPane.columnSpan="2"/>
+    <!-- RIGHT: credentials form -->
+    <GridPane hgap="10" vgap="8" styleClass="login-panel" GridPane.rowIndex="0" GridPane.columnIndex="1" GridPane.vgrow="ALWAYS">
+        <padding>
+            <Insets top="24" right="28" bottom="24" left="28"/>
+        </padding>
+        <columnConstraints>
+            <ColumnConstraints minWidth="90" halignment="LEFT"/>
+            <ColumnConstraints hgrow="ALWAYS"/>
+        </columnConstraints>
+        <rowConstraints>
+            <RowConstraints minHeight="40"/>
+            <RowConstraints minHeight="40"/>
+            <RowConstraints minHeight="18"/>
+            <RowConstraints minHeight="40"/>
+            <RowConstraints minHeight="18"/>
+            <RowConstraints minHeight="44"/>
+            <RowConstraints minHeight="40"/>
+            <RowConstraints minHeight="40"/>
+            <RowConstraints minHeight="24"/>
+        </rowConstraints>
 
-    <HBox spacing="16" GridPane.rowIndex="7" GridPane.columnIndex="0" GridPane.columnSpan="2">
-        <Button text="Login" onAction="#handleLogin" styleClass="wise-pill-primary"/>
-        <Hyperlink text="Register" onAction="#handleRegister" styleClass="link-button"/>
-    </HBox>
+        <Label text="ACCESS // LOGIN" styleClass="heading-2" GridPane.columnSpan="2" GridPane.rowIndex="0"/>
 
-    <Label fx:id="infoLabel" styleClass="info-label"
-           GridPane.rowIndex="8" GridPane.columnIndex="0" GridPane.columnSpan="2"/>
+        <Label text="USERNAME:" styleClass="dialog-form-label" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+        <TextField fx:id="usernameField" promptText="Enter username" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+
+        <Label text="(MAX 20 CHARS)" styleClass="hint-label" GridPane.rowIndex="2" GridPane.columnIndex="1" GridPane.halignment="RIGHT"/>
+
+        <Label text="PASSWORD:" styleClass="dialog-form-label" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+        <HBox spacing="6" GridPane.rowIndex="3" GridPane.columnIndex="1">
+            <PasswordField fx:id="passwordField" promptText="Enter password" HBox.hgrow="ALWAYS"/>
+            <TextField fx:id="passwordShowField" promptText="Enter password" visible="false" managed="false" HBox.hgrow="ALWAYS"/>
+            <Button fx:id="togglePasswordBtn" text="👁" styleClass="icon-button" prefWidth="40"/>
+        </HBox>
+
+        <Label fx:id="passwordHintLabel" styleClass="hint-label" GridPane.rowIndex="4" GridPane.columnIndex="1"/>
+
+        <VBox spacing="4" GridPane.rowIndex="5" GridPane.columnIndex="0" GridPane.columnSpan="2">
+            <Label text="PASSWORD MUST CONTAIN:" styleClass="small"/>
+            <Label fx:id="requirementsLabel" text="• UPPERCASE LETTER · LOWERCASE LETTER · DIGIT" styleClass="small"/>
+        </VBox>
+
+        <Label fx:id="errorLabel" styleClass="error-label" wrapText="true" GridPane.rowIndex="6" GridPane.columnIndex="0" GridPane.columnSpan="2"/>
+
+        <HBox spacing="16" GridPane.rowIndex="7" GridPane.columnIndex="0" GridPane.columnSpan="2">
+            <Button text="LOGIN →" onAction="#handleLogin" styleClass="neo-button-primary"/>
+            <Hyperlink text="REGISTER NEW USER" onAction="#handleRegister" styleClass="link-button"/>
+        </HBox>
+
+        <Label fx:id="infoLabel" styleClass="info-label" wrapText="true"
+               GridPane.rowIndex="8" GridPane.columnIndex="0" GridPane.columnSpan="2"/>
+    </GridPane>
 </GridPane>

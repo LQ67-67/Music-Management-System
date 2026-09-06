@@ -93,13 +93,13 @@ public class LoginController {
         requirementsLabel.setText(requirements.toString());
 
         if (!hasUppercase || !hasLowercase || !hasDigit) {
-            requirementsLabel.setStyle("-fx-text-fill: #d03238;");
+            requirementsLabel.setStyle("-fx-text-fill: #FF6B6B;");
             passwordHintLabel.setText("Password could be stronger");
-            passwordHintLabel.setStyle("-fx-text-fill: #868685; -fx-font-weight: 400;");
+            passwordHintLabel.setStyle("-fx-text-fill: #8A8A8A; -fx-font-weight: 400;");
         } else {
-            requirementsLabel.setStyle("-fx-text-fill: #054d28;");
+            requirementsLabel.setStyle("-fx-text-fill: #7BE0AD;");
             passwordHintLabel.setText("✓ Password strength: strong");
-            passwordHintLabel.setStyle("-fx-text-fill: #054d28; -fx-font-weight: 600;");
+            passwordHintLabel.setStyle("-fx-text-fill: #7BE0AD; -fx-font-weight: 600;");
         }
     }
 
@@ -226,7 +226,7 @@ public class LoginController {
         grid.add(confirmHint, 1, 5);
 
         Label validationLabel = new Label("");
-        validationLabel.setStyle("-fx-text-fill: #d03238; -fx-font-weight: 600;");
+        validationLabel.setStyle("-fx-text-fill: #FF6B6B; -fx-font-weight: 600;");
         validationLabel.setWrapText(true);
 
         Runnable validateInput = () -> {
@@ -238,10 +238,10 @@ public class LoginController {
                 usernameHint.setText("");
             } else if (username.length() < 4 || !username.matches("[A-Za-z0-9_]+")) {
                 usernameHint.setText("✗ Username must be 4-20 characters using letters, numbers or _");
-                usernameHint.setStyle("-fx-text-fill: #d03238;");
+                usernameHint.setStyle("-fx-text-fill: #FF6B6B;");
             } else {
                 usernameHint.setText("✓ Username looks good");
-                usernameHint.setStyle("-fx-text-fill: #054d28;");
+                usernameHint.setStyle("-fx-text-fill: #7BE0AD;");
             }
 
             if (password.isEmpty()) {
@@ -256,10 +256,10 @@ public class LoginController {
                             !hasUppercase ? "uppercase (A-Z), " : "",
                             !hasLowercase ? "lowercase (a-z), " : "",
                             !hasDigit ? "digit (0-9)" : "").replaceAll(", $", ""));
-                    passwordHint.setStyle("-fx-text-fill: #d03238;");
+                    passwordHint.setStyle("-fx-text-fill: #FF6B6B;");
                 } else {
                     passwordHint.setText("✓ Password strength: strong");
-                    passwordHint.setStyle("-fx-text-fill: #054d28;");
+                    passwordHint.setStyle("-fx-text-fill: #7BE0AD;");
                 }
             }
 
@@ -267,10 +267,10 @@ public class LoginController {
                 confirmHint.setText("");
             } else if (!confirm.equals(password)) {
                 confirmHint.setText("✗ Passwords do not match");
-                confirmHint.setStyle("-fx-text-fill: #d03238;");
+                confirmHint.setStyle("-fx-text-fill: #FF6B6B;");
             } else {
                 confirmHint.setText("✓ Passwords match");
-                confirmHint.setStyle("-fx-text-fill: #054d28;");
+                confirmHint.setStyle("-fx-text-fill: #7BE0AD;");
             }
         };
 
@@ -279,7 +279,7 @@ public class LoginController {
         confirmField.textProperty().addListener((obs, o, n) -> validateInput.run());
 
         Button registerBtn = new Button("Register");
-        registerBtn.setStyle("-fx-background-color: #9fe870; -fx-text-fill: #163300; -fx-padding: 8 20; -fx-border-radius: 9999; -fx-background-radius: 9999; -fx-font-weight: 600;");
+        registerBtn.setStyle("-fx-background-color: #FFFFFF; -fx-text-fill: #000000; -fx-padding: 8 20; -fx-font-weight: 700;");
         registerBtn.setOnAction(event -> {
             String u = newUsernameField.getText().trim();
             String p = newPasswordField.getText();

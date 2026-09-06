@@ -47,8 +47,7 @@
                text="Album Name"
                styleClass="caption"
                wrapText="true"
-               maxWidth="236"
-               style="-fx-text-fill: #454745;"/>
+               maxWidth="236"/>
 
         <!-- Category tags -->
         <FlowPane fx:id="categoryPane" hgap="6" vgap="6" prefWrapLength="236"/>
@@ -64,8 +63,7 @@
     <HBox spacing="8" alignment="CENTER_LEFT">
         <Label fx:id="priceLabel"
                text="RM 0.00"
-               styleClass="body-semibold"
-               style="-fx-text-fill: #163300;"/>
+               styleClass="body-semibold card-price"/>
         <Button fx:id="stockButton"
                 text="In Stock"
                 styleClass="stock-badge"/>

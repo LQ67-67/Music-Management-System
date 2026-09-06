@@ -357,7 +357,7 @@ public class UserMainController {
         cartTable.getColumns().addAll(titleCol, qtyCol, priceCol, totalCol);
 
         Button removeBtn = new Button("Remove Selected");
-        removeBtn.setStyle("-fx-background-color: #d03238; -fx-text-fill: white; -fx-padding: 8 16; -fx-font-weight: 600;");
+        removeBtn.setStyle("-fx-background-color: #FF6B6B; -fx-text-fill: white; -fx-padding: 8 16; -fx-font-weight: 600;");
         removeBtn.setOnAction(e -> {
             OrderItem sel = cartTable.getSelectionModel().getSelectedItem();
             if (sel != null) {
@@ -367,14 +367,14 @@ public class UserMainController {
         });
 
         Button clearBtn = new Button("Clear Cart");
-        clearBtn.setStyle("-fx-background-color: #d03238; -fx-text-fill: white; -fx-padding: 8 16; -fx-font-weight: 600;");
+        clearBtn.setStyle("-fx-background-color: #FF6B6B; -fx-text-fill: white; -fx-padding: 8 16; -fx-font-weight: 600;");
         clearBtn.setOnAction(e -> {
             cartItems.clear();
             dialog.close();
         });
 
         Button checkoutBtn = new Button("Checkout");
-        checkoutBtn.setStyle("-fx-background-color: #9fe870; -fx-text-fill: #163300; -fx-padding: 8 20; -fx-font-weight: 600;");
+        checkoutBtn.setStyle("-fx-background-color: #FFFFFF; -fx-text-fill: #000000; -fx-padding: 8 20; -fx-font-weight: 600;");
 
         checkoutBtn.setOnAction(e -> {
             try {

@@ -26,7 +26,7 @@
                 <Insets top="12" right="16" bottom="12" left="16"/>
             </padding>
             <children>
-                <Label text="📋 MY ORDERS" styleClass="title-label header-title"/>
+                <Label text="MY ORDERS" styleClass="title-label header-title"/>
                 <Label text="Select an order, then edit items inline (PENDING orders only)" styleClass="header-welcome"/>
                 <Region HBox.hgrow="ALWAYS"/>
             </children>
@@ -57,7 +57,7 @@
 
                     <Label text="Order Items" styleClass="heading-3"/>
                     <Label text="Use ＋ / － to adjust quantity, 🗑 to remove an item — stock updates automatically."
-                           styleClass="caption" style="-fx-text-fill: #6b7280;"/>
+                           styleClass="caption"/>
                     <TableView fx:id="orderItemTable" VBox.vgrow="ALWAYS">
                         <columns>
                             <TableColumn fx:id="colTrack" text="Track" prefWidth="260"/>
@@ -73,7 +73,7 @@
 
                     <HBox spacing="10" styleClass="action-row">
                         <children>
-                            <Button text="➕ ADD ITEM" onAction="#handleAddOrderItem" styleClass="neo-button-secondary"/>
+                            <Button text="+ ADD ITEM" onAction="#handleAddOrderItem" styleClass="neo-button-secondary"/>
                         </children>
                     </HBox>
 
@@ -82,13 +82,13 @@
                     <Label text="Shipping &amp; Payment" styleClass="heading-3"/>
                     <HBox spacing="10" styleClass="action-row">
                         <children>
-                            <Label text="Shipping City:"/>
+                            <Label text="SHIPPING CITY:"/>
                             <TextField fx:id="shippingCityField" promptText="e.g. Kuala Lumpur" prefWidth="220" styleClass="neo-input"/>
-                            <Button text="💾 SAVE CITY" onAction="#handleSaveShippingCity" styleClass="neo-button-outline"/>
-                            <Button text="💳 PAY ORDER" onAction="#handlePayOrder" styleClass="neo-button-primary"/>
-                            <Button text="✖ CANCEL ORDER" onAction="#handleCancelOrder" styleClass="neo-button-danger"/>
-                            <Button text="🗑 DELETE ORDER" onAction="#handleDeleteOrder" styleClass="neo-button-danger"/>
-                            <Button text="🧾 VIEW INVOICE" onAction="#handleViewInvoice" styleClass="neo-button-outline"/>
+                            <Button text="SAVE CITY" onAction="#handleSaveShippingCity" styleClass="neo-button-outline"/>
+                            <Button text="PAY ORDER →" onAction="#handlePayOrder" styleClass="neo-button-primary"/>
+                            <Button text="CANCEL ORDER" onAction="#handleCancelOrder" styleClass="neo-button-danger"/>
+                            <Button text="DELETE ORDER" onAction="#handleDeleteOrder" styleClass="neo-button-danger"/>
+                            <Button text="VIEW INVOICE" onAction="#handleViewInvoice" styleClass="neo-button-outline"/>
                         </children>
                     </HBox>
                 </children>

@@ -22,10 +22,10 @@
                 <Insets top="10" right="10" bottom="10" left="10"/>
             </padding>
             <children>
-                <Label text="🎛️ ADMIN CONTROL PANEL" styleClass="title-label header-title"/>
+                <Label text="ADMIN CONTROL PANEL" styleClass="title-label header-title"/>
                 <Label fx:id="welcomeLabel" styleClass="header-welcome"/>
                 <Region HBox.hgrow="ALWAYS"/>
-                <Button text="🚪 LOGOUT" onAction="#handleLogout" styleClass="neo-button-danger"/>
+                <Button text="LOGOUT →" onAction="#handleLogout" styleClass="neo-button-danger"/>
             </children>
         </HBox>
     </top>
@@ -33,10 +33,10 @@
     <center>
         <TabPane fx:id="tabPane">
             <tabs>
-                <Tab fx:id="tracksTab" text="🎵 TRACKS" closable="false"/>
-                <Tab fx:id="customersTab" text="👥 CUSTOMERS" closable="false"/>
-                <Tab fx:id="ordersTab" text="📦 ORDERS" closable="false"/>
-                <Tab fx:id="reportsTab" text="📊 REPORTS" closable="false"/>
+                <Tab fx:id="tracksTab" text="01 · TRACKS" closable="false"/>
+                <Tab fx:id="customersTab" text="02 · CUSTOMERS" closable="false"/>
+                <Tab fx:id="ordersTab" text="03 · ORDERS" closable="false"/>
+                <Tab fx:id="reportsTab" text="04 · REPORTS" closable="false"/>
             </tabs>
         </TabPane>
     </center>

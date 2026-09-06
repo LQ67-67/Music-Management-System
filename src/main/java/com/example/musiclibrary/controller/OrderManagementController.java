@@ -273,7 +273,7 @@ public class OrderManagementController {
         qtySpinner.setEditable(true);
 
         Label hintLabel = new Label();
-        hintLabel.setStyle("-fx-text-fill: #868685; -fx-font-size: 12px;");
+        hintLabel.setStyle("-fx-text-fill: #8A8A8A; -fx-font-size: 12px;");
         Runnable updateHint = () -> {
             Track t = trackBox.getValue();
             if (t != null) {
@@ -299,7 +299,7 @@ public class OrderManagementController {
         grid.add(hintLabel, 1, 2);
 
         Label errorLabel = new Label();
-        errorLabel.setStyle("-fx-text-fill: #d03238; -fx-font-weight: 600;");
+        errorLabel.setStyle("-fx-text-fill: #FF6B6B; -fx-font-weight: 600;");
 
         Button addBtn = new Button("➕ Add to Order");
         addBtn.getStyleClass().add("neo-button-primary");
@@ -499,7 +499,7 @@ public class OrderManagementController {
         grid.add(errorLabel, 0, 4, 2, 1);
 
         Button confirmPayBtn = new Button("Confirm Payment");
-        confirmPayBtn.setStyle("-fx-background-color: #1565c0; -fx-text-fill: white; -fx-font-weight: bold;");
+        confirmPayBtn.setStyle("-fx-background-color: #FFFFFF; -fx-text-fill: #000000; -fx-font-weight: bold;");
 
         Button cancelPayBtn = new Button("Cancel");
 
@@ -615,7 +615,9 @@ public class OrderManagementController {
         root.setPadding(new Insets(24));
         root.setAlignment(Pos.TOP_CENTER);
 
-        dialog.setScene(new Scene(root, 480, 400));
+        Scene payScene = new Scene(root, 480, 400);
+        payScene.getStylesheets().add(getClass().getResource("/css/app.css").toExternalForm());
+        dialog.setScene(payScene);
         dialog.showAndWait();
     }
 
@@ -629,10 +631,10 @@ public class OrderManagementController {
         icon.setStyle("-fx-font-size: 50px;");
 
         Label msg = new Label("Thank You!");
-        msg.setStyle("-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #2e7d32;");
+        msg.setStyle("-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #7BE0AD;");
 
         Label subMsg = new Label("Your payment was successfully processed.");
-        subMsg.setStyle("-fx-font-size: 13px; -fx-text-fill: #555555;");
+        subMsg.setStyle("-fx-font-size: 13px; -fx-text-fill: #8A8A8A;");
 
         VBox headerBox = new VBox(5, icon, msg, subMsg);
         headerBox.setAlignment(Pos.CENTER);
@@ -646,36 +648,38 @@ public class OrderManagementController {
         detailsGrid.setAlignment(Pos.CENTER);
 
         Label lblOrder = new Label("Order Number:");
-        lblOrder.setStyle("-fx-text-fill: #666666; -fx-font-weight: bold;");
+        lblOrder.setStyle("-fx-text-fill: #8A8A8A; -fx-font-weight: bold;");
         Label valOrder = new Label("#" + orderId);
         valOrder.setStyle("-fx-font-weight: bold; -fx-font-size: 13px;");
 
         Label lblDate = new Label("Date:");
-        lblDate.setStyle("-fx-text-fill: #666666; -fx-font-weight: bold;");
+        lblDate.setStyle("-fx-text-fill: #8A8A8A; -fx-font-weight: bold;");
 
         String currentDate = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("dd MMM yyyy, HH:mm")); // grab the exact current time for the receipt
         Label valDate = new Label(currentDate);
         valDate.setStyle("-fx-font-size: 13px;");
 
         Label lblAmount = new Label("Amount Paid:");
-        lblAmount.setStyle("-fx-text-fill: #666666; -fx-font-weight: bold;");
+        lblAmount.setStyle("-fx-text-fill: #8A8A8A; -fx-font-weight: bold;");
         Label valAmount = new Label(String.format("RM %.2f", amount));
-        valAmount.setStyle("-fx-font-weight: bold; -fx-font-size: 15px; -fx-text-fill: #1565c0;");  // highlight final amount
+        valAmount.setStyle("-fx-font-weight: bold; -fx-font-size: 15px; -fx-text-fill: #FFFFFF;");  // highlight final amount
 
         detailsGrid.add(lblOrder, 0, 0);  detailsGrid.add(valOrder, 1, 0);
         detailsGrid.add(lblDate, 0, 1);   detailsGrid.add(valDate, 1, 1);
         detailsGrid.add(lblAmount, 0, 2); detailsGrid.add(valAmount, 1, 2);
 
         Button okBtn = new Button("Done"); // bottom Button
-        okBtn.setStyle("-fx-background-color: #2e7d32; -fx-text-fill: white; -fx-font-weight: bold; -fx-pref-width: 120px; -fx-padding: 8px; -fx-cursor: hand;");
+        okBtn.setStyle("-fx-background-color: #FFFFFF; -fx-text-fill: #000000; -fx-font-weight: bold; -fx-pref-width: 120px; -fx-padding: 8px; -fx-cursor: hand;");
         okBtn.setOnAction(e -> stage.close());
 
         VBox box = new VBox(15, headerBox, separator, detailsGrid, new Label(""), okBtn); // assemble everything with a slight off-white/gray background to mimic paper
         box.setAlignment(Pos.TOP_CENTER);
         box.setPadding(new Insets(25, 30, 25, 30));
-        box.setStyle("-fx-background-color: #f8f9fa;");
+        box.setStyle("-fx-background-color: #0A0A0A;");
 
-        stage.setScene(new Scene(box, 380, 390));
+        Scene receiptScene = new Scene(box, 380, 390);
+        receiptScene.getStylesheets().add(getClass().getResource("/css/app.css").toExternalForm());
+        stage.setScene(receiptScene);
         stage.setResizable(false); // prevent the user from resizing the window so receipt layout doesn't break
         stage.showAndWait();
     }
@@ -749,7 +753,9 @@ public class OrderManagementController {
                 new Label("Items:"), itemTable, closeBtn);
         vbox.setPadding(new Insets(20));
 
-        dialog.setScene(new Scene(vbox, 600, 500));
+        Scene invoiceScene = new Scene(vbox, 600, 500);
+        invoiceScene.getStylesheets().add(getClass().getResource("/css/app.css").toExternalForm());
+        dialog.setScene(invoiceScene);
         dialog.showAndWait();
     }
 

@@ -297,7 +297,7 @@ public class AdminMainController {
         grid.add(audioLabel, 0, 7); grid.add(audioRow, 1, 7);
 
         Label validationLabel = new Label("");
-        validationLabel.setStyle("-fx-text-fill: #d03238; -fx-font-size: 13px; -fx-font-weight: 600; -fx-padding: 8 0 0 0;");
+        validationLabel.setStyle("-fx-text-fill: #FF6B6B; -fx-font-size: 13px; -fx-font-weight: 600; -fx-padding: 8 0 0 0;");
         validationLabel.setWrapText(true);
 
         Button saveBtn = new Button("💾 SAVE TRACK");
@@ -513,7 +513,7 @@ public class AdminMainController {
         grid.add(cityLabel, 0, 3);  grid.add(cityField, 1, 3);
 
         Label validationLabel = new Label("");
-        validationLabel.setStyle("-fx-text-fill: #d03238; -fx-font-size: 13px; -fx-font-weight: 600; -fx-padding: 8 0 0 0;");
+        validationLabel.setStyle("-fx-text-fill: #FF6B6B; -fx-font-size: 13px; -fx-font-weight: 600; -fx-padding: 8 0 0 0;");
         validationLabel.setWrapText(true);
 
         Button saveBtn = new Button("💾 SAVE CUSTOMER");
@@ -647,7 +647,7 @@ public class AdminMainController {
         grid.add(cityLabel, 0, 1); grid.add(cityField, 1, 1);
 
         Label validationLabel = new Label("");
-        validationLabel.setStyle("-fx-text-fill: #d03238; -fx-font-size: 13px; -fx-font-weight: 600; -fx-padding: 8 0 0 0;");
+        validationLabel.setStyle("-fx-text-fill: #FF6B6B; -fx-font-size: 13px; -fx-font-weight: 600; -fx-padding: 8 0 0 0;");
         validationLabel.setWrapText(true);
 
         Button saveBtn = new Button("💾 SAVE ORDER");
@@ -1176,9 +1176,9 @@ public class AdminMainController {
         if (labels == null || labels.isEmpty() || total <= 0) {
             // draw a clear "no data" message so it's obvious why nothing appears
             try {
-                gc.setFill(Color.web("#fafafa"));
+                gc.setFill(Color.web("#0A0A0A"));
                 gc.fillRect(0, 0, width, height);
-                gc.setFill(Color.web("#666666"));
+                gc.setFill(Color.web("#8A8A8A"));
                 gc.setFont(Font.font("System", FontWeight.BOLD, 14));
                 gc.setTextAlign(javafx.scene.text.TextAlignment.CENTER);
                 gc.setTextBaseline(javafx.geometry.VPos.CENTER);
@@ -1221,7 +1221,7 @@ public class AdminMainController {
         Font legendTitleFont = Font.font("System", FontWeight.BOLD, 13);
         Font legendItemFont = Font.font("System", 11);
         gc.setFont(legendTitleFont);
-        gc.setFill(Color.BLACK);
+        gc.setFill(Color.WHITE);
         gc.fillText(title, legendStartX, legendBelow ? (pieAreaHeight + 14) : 20);
         gc.setFont(legendItemFont);
 
@@ -1237,7 +1237,7 @@ public class AdminMainController {
 
             gc.setFill(PIE_COLORS[i % PIE_COLORS.length]);
             gc.fillRect(lx, ly, 14, 14);
-            gc.setFill(Color.BLACK);
+            gc.setFill(Color.WHITE);
             double pct = (values.get(i) / total) * 100;
             String lbl = labels.get(i);
             if (lbl == null || lbl.isEmpty()) lbl = "(None)";
@@ -1348,10 +1348,10 @@ public class AdminMainController {
         dialog.setTitle(title);
 
         Label titleLabel = new Label(title.toUpperCase());
-        titleLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: 900; -fx-text-fill: #000000;");
+        titleLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: 900; -fx-text-fill: #FFFFFF;");
 
         Label messageLabel = new Label(message);
-        messageLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: #000000; -fx-font-weight: 700;");
+        messageLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: #EDEDED; -fx-font-weight: 700;");
         messageLabel.setWrapText(true);
         messageLabel.setMaxWidth(400);
 
@@ -1360,17 +1360,17 @@ public class AdminMainController {
         content.getChildren().addAll(titleLabel, new Separator(), messageLabel);
 
         if ("error".equals(type)) {
-            content.setStyle("-fx-background-color: #FFE0E0; -fx-border-color: #FF6B6B; " +
+            content.setStyle("-fx-background-color: #150A0A; -fx-border-color: #FF6B6B; " +
                     "-fx-border-width: 4; -fx-padding: 16;");
             titleLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: 900; -fx-text-fill: #FF6B6B;");
         } else if ("success".equals(type)) {
-            content.setStyle("-fx-background-color: #E8F5E9; -fx-border-color: #054d28; " +
+            content.setStyle("-fx-background-color: #0A150F; -fx-border-color: #7BE0AD; " +
                     "-fx-border-width: 4; -fx-padding: 16;");
-            titleLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: 900; -fx-text-fill: #054d28;");
+            titleLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: 900; -fx-text-fill: #7BE0AD;");
         } else {
-            content.setStyle("-fx-background-color: #E3F2FD; -fx-border-color: #0066cc; " +
+            content.setStyle("-fx-background-color: #0A0F16; -fx-border-color: #9AC1FF; " +
                     "-fx-border-width: 4; -fx-padding: 16;");
-            titleLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: 900; -fx-text-fill: #0066cc;");
+            titleLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: 900; -fx-text-fill: #9AC1FF;");
         }
 
         Button okBtn = new Button("✓ OK");
@@ -1384,7 +1384,7 @@ public class AdminMainController {
         buttonBox.getChildren().add(okBtn);
 
         VBox mainLayout = new VBox();
-        mainLayout.setStyle("-fx-background-color: #FFFFFF;");
+        mainLayout.setStyle("-fx-background-color: #0A0A0A;");
         mainLayout.getChildren().addAll(content, buttonBox);
 
         Scene scene = new Scene(mainLayout);
