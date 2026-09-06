@@ -6,6 +6,7 @@ import com.example.musiclibrary.dao.TrackDao;
 import com.example.musiclibrary.model.Order;
 import com.example.musiclibrary.model.OrderItem;
 import com.example.musiclibrary.model.Track;
+import com.example.musiclibrary.service.OrderService;
 import com.example.musiclibrary.session.SessionManager;
 import javafx.beans.property.*;
 import javafx.collections.FXCollections;
@@ -45,6 +46,7 @@ public class OrderManagementController {
     @FXML private TableColumn<OrderItem, Number> colQuantity;
     @FXML private TableColumn<OrderItem, BigDecimal> colUnitPrice;
     @FXML private TableColumn<OrderItem, BigDecimal> colLineTotal;
+    @FXML private TableColumn<OrderItem, Void> colItemActions;
     @FXML private TextField shippingCityField;
 
     private final ObservableList<Order> orders = FXCollections.observableArrayList();
@@ -52,6 +54,7 @@ public class OrderManagementController {
     private final OrderDao orderDao = new OrderDao();
     private final OrderItemDao orderItemDao = new OrderItemDao();
     private final TrackDao trackDao = new TrackDao();
+    private final OrderService orderService = new OrderService();
     private final Map<Integer, String> trackLabelCache = new HashMap<>();
 
     @FXML
@@ -65,12 +68,30 @@ public class OrderManagementController {
                     p.getValue().getOrderDate().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))); // format the date for good readability
         });
         colStatus.setCellValueFactory(p -> new SimpleStringProperty(p.getValue().getStatus()));
+        colStatus.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                getStyleClass().removeAll("status-badge", "status-pending", "status-confirmed", "status-paid", "status-cancelled");
+                if (empty || item == null) {
+                    setText(null);
+                } else {
+                    setText(item);
+                    getStyleClass().addAll("status-badge", "status-" + item.toLowerCase());
+                }
+            }
+        });
         colTotal.setCellValueFactory(p -> new SimpleObjectProperty<>(p.getValue().getTotalAmount()));
+        colTotal.setStyle("-fx-alignment: CENTER-RIGHT;");
 
         colTrack.setCellValueFactory(p -> new SimpleStringProperty(getTrackLabel(p.getValue().getTrackId())));
         colQuantity.setCellValueFactory(p -> new SimpleIntegerProperty(p.getValue().getQuantity()));
+        colQuantity.setStyle("-fx-alignment: CENTER;");
         colUnitPrice.setCellValueFactory(p -> new SimpleObjectProperty<>(p.getValue().getUnitPrice()));
+        colUnitPrice.setStyle("-fx-alignment: CENTER-RIGHT;");
         colLineTotal.setCellValueFactory(p -> new SimpleObjectProperty<>(p.getValue().getLineTotal()));
+        colLineTotal.setStyle("-fx-alignment: CENTER-RIGHT;");
+        setupItemActionColumn();
 
         orderTable.setItems(orders);
         orderItemTable.setItems(orderItems);
@@ -83,6 +104,7 @@ public class OrderManagementController {
                 orderItems.clear();
                 shippingCityField.clear();
             }
+            orderItemTable.refresh(); // re-render action buttons so only PENDING orders expose them
         });
 
         loadOrders(); // load orders when nothing wrong happened with the best cases (>_<)
@@ -111,6 +133,210 @@ public class OrderManagementController {
         }
     }
 
+    // inline +/-/remove buttons per item row; only rendered for PENDING orders so paid/cancelled history stays read-only
+    private void setupItemActionColumn() {
+        colItemActions.setCellValueFactory(p -> new SimpleObjectProperty<>(null));
+        colItemActions.setCellFactory(col -> new TableCell<>() {
+            private final Button incBtn = new Button("＋");
+            private final Button decBtn = new Button("－");
+            private final Button removeBtn = new Button("🗑");
+            private final HBox actionBox = new HBox(4, decBtn, incBtn, removeBtn);
+
+            {
+                actionBox.setAlignment(Pos.CENTER);
+                incBtn.getStyleClass().add("qty-btn");
+                decBtn.getStyleClass().add("qty-btn");
+                removeBtn.getStyleClass().addAll("qty-btn", "qty-btn-danger");
+                incBtn.setTooltip(new Tooltip("Increase quantity by 1"));
+                decBtn.setTooltip(new Tooltip("Decrease quantity by 1"));
+                removeBtn.setTooltip(new Tooltip("Remove this item and return stock"));
+
+                incBtn.setOnAction(e -> changeQuantity(+1));
+                decBtn.setOnAction(e -> changeQuantity(-1));
+                removeBtn.setOnAction(e -> removeItem());
+            }
+
+            private void changeQuantity(int delta) {
+                OrderItem item = currentOrderItem();
+                Order order = currentOrder();
+                if (item == null || order == null) {
+                    return;
+                }
+                int newQty = item.getQuantity() + delta;
+                if (newQty < 1) {
+                    showError("Quantity cannot go below 1. Use the remove button to delete this item.");
+                    return;
+                }
+                try {
+                    orderService.adjustOrderItemQuantity(order.getId(), item.getId(), newQty);
+                    reloadAfterItemChange(order);
+                } catch (IllegalArgumentException | IllegalStateException ex) {
+                    showError(ex.getMessage());
+                } catch (SQLException ex) {
+                    LOGGER.log(Level.SEVERE, "Failed to adjust item quantity", ex);
+                    showError("Failed to adjust quantity: " + ex.getMessage());
+                }
+            }
+
+            private void removeItem() {
+                OrderItem item = currentOrderItem();
+                Order order = currentOrder();
+                if (item == null || order == null) {
+                    return;
+                }
+                try {
+                    orderService.removeOrderItem(order.getId(), item.getId());
+                    reloadAfterItemChange(order);
+                } catch (IllegalArgumentException | IllegalStateException ex) {
+                    showError(ex.getMessage());
+                } catch (SQLException ex) {
+                    LOGGER.log(Level.SEVERE, "Failed to remove order item", ex);
+                    showError("Failed to remove item: " + ex.getMessage());
+                }
+            }
+
+            private OrderItem currentOrderItem() {
+                return getTableRow() == null ? null : getTableRow().getItem();
+            }
+
+            private Order currentOrder() {
+                return orderTable.getSelectionModel().getSelectedItem();
+            }
+
+            @Override
+            protected void updateItem(Void item, boolean empty) {
+                super.updateItem(item, empty);
+                Order order = currentOrder();
+                boolean editable = !empty && currentOrderItem() != null
+                        && order != null && "PENDING".equals(order.getStatus());
+                setGraphic(editable ? actionBox : null);
+            }
+        });
+    }
+
+    // refresh both tables after a successful item edit; keep the same order selected so the user stays in context
+    private void reloadAfterItemChange(Order order) {
+        loadOrders();
+        for (Order o : orders) {
+            if (o.getId() == order.getId()) {
+                orderTable.getSelectionModel().select(o);
+                break;
+            }
+        }
+    }
+
+    @FXML
+    private void handleAddOrderItem() {
+        Order sel = orderTable.getSelectionModel().getSelectedItem();
+        if (sel == null) {
+            showError("Please select an order first.");
+            return;
+        }
+        if (!"PENDING".equals(sel.getStatus())) {
+            showError("Only PENDING orders can be modified. Current status: " + sel.getStatus());
+            return;
+        }
+
+        List<Track> availableTracks;
+        try {
+            availableTracks = trackDao.findAllActive();
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Failed to load tracks", e);
+            showError("Failed to load tracks: " + e.getMessage());
+            return;
+        }
+        if (availableTracks.isEmpty()) {
+            showError("No tracks are available to add.");
+            return;
+        }
+
+        Stage dialog = new Stage();
+        dialog.initModality(Modality.APPLICATION_MODAL);
+        dialog.initOwner(orderTable.getScene().getWindow());
+        dialog.setTitle("Add Item to Order #" + sel.getId());
+
+        ComboBox<Track> trackBox = new ComboBox<>(FXCollections.observableArrayList(availableTracks));
+        trackBox.setPrefWidth(320);
+        trackBox.setCellFactory(lv -> new ListCell<>() {
+            @Override
+            protected void updateItem(Track item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty || item == null ? null
+                        : String.format("%s - %s (RM %s, stock %d)", item.getTitle(), item.getArtist(), item.getPrice(), item.getStockQty()));
+            }
+        });
+        trackBox.setButtonCell(trackBox.getCellFactory().call(null));
+        trackBox.getSelectionModel().selectFirst();
+
+        Spinner<Integer> qtySpinner = new Spinner<>(1, Integer.MAX_VALUE, 1);
+        qtySpinner.setPrefWidth(90);
+        qtySpinner.setEditable(true);
+
+        Label hintLabel = new Label();
+        hintLabel.setStyle("-fx-text-fill: #868685; -fx-font-size: 12px;");
+        Runnable updateHint = () -> {
+            Track t = trackBox.getValue();
+            if (t != null) {
+                hintLabel.setText(String.format("Unit price: RM %s · Available stock: %d", t.getPrice(), t.getStockQty()));
+                qtySpinner.getValueFactory().setValue(1);
+                // cap the spinner at the current stock so invalid quantities never reach the database
+                SpinnerValueFactory.IntegerSpinnerValueFactory factory =
+                        (SpinnerValueFactory.IntegerSpinnerValueFactory) qtySpinner.getValueFactory();
+                factory.setMax(Math.max(1, t.getStockQty()));
+            }
+        };
+        trackBox.valueProperty().addListener((obs, oldV, newV) -> updateHint.run());
+        updateHint.run();
+
+        GridPane grid = new GridPane();
+        grid.setHgap(12);
+        grid.setVgap(12);
+        grid.setPadding(new Insets(20));
+        grid.add(new Label("Track:"), 0, 0);
+        grid.add(trackBox, 1, 0);
+        grid.add(new Label("Quantity:"), 0, 1);
+        grid.add(qtySpinner, 1, 1);
+        grid.add(hintLabel, 1, 2);
+
+        Label errorLabel = new Label();
+        errorLabel.setStyle("-fx-text-fill: #d03238; -fx-font-weight: 600;");
+
+        Button addBtn = new Button("➕ Add to Order");
+        addBtn.getStyleClass().add("neo-button-primary");
+        addBtn.setOnAction(e -> {
+            Track track = trackBox.getValue();
+            if (track == null) {
+                errorLabel.setText("Please select a track.");
+                return;
+            }
+            try {
+                orderService.addOrderItem(sel.getId(), track.getId(), qtySpinner.getValue());
+                dialog.close();
+                reloadAfterItemChange(sel);
+            } catch (IllegalArgumentException | IllegalStateException ex) {
+                errorLabel.setText(ex.getMessage());
+            } catch (SQLException ex) {
+                LOGGER.log(Level.SEVERE, "Failed to add item to order", ex);
+                errorLabel.setText("Failed to add item: " + ex.getMessage());
+            }
+        });
+
+        Button cancelBtn = new Button("Cancel");
+        cancelBtn.getStyleClass().add("neo-button-ghost");
+        cancelBtn.setOnAction(e -> dialog.close());
+
+        HBox buttons = new HBox(10, addBtn, cancelBtn);
+        buttons.setAlignment(Pos.CENTER_RIGHT);
+        buttons.setPadding(new Insets(0, 20, 16, 20));
+
+        VBox root = new VBox(10, grid, errorLabel, buttons);
+        Scene scene = new Scene(root);
+        scene.getStylesheets().add(getClass().getResource("/css/app.css").toExternalForm());
+        dialog.setScene(scene);
+        dialog.setResizable(false);
+        dialog.showAndWait();
+    }
+
 
     @FXML
     private void handleCancelOrder() {
@@ -125,10 +351,11 @@ public class OrderManagementController {
             return;
         }
 
-        sel.setStatus("CANCELLED");
         try {
-            orderDao.update(sel);
+            orderService.cancelOrder(sel.getId()); // transactional cancel that also returns reserved stock
             loadOrders();
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            showError(e.getMessage());
         } catch (SQLException e) {
             LOGGER.log(Level.SEVERE, "Failed to cancel order", e);
             showError("Failed to cancel order: " + e.getMessage());
@@ -139,11 +366,25 @@ public class OrderManagementController {
     private void handleDeleteOrder() {
         Order sel = orderTable.getSelectionModel().getSelectedItem();
         if (sel == null) { showError("Please select an order first."); return; }
+        if ("PAID".equals(sel.getStatus())) {
+            showError("PAID orders are kept as financial records and cannot be deleted.");
+            return;
+        }
+
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
+                "Delete order #" + sel.getId() + "? Its items will be removed and stock returned.", ButtonType.OK, ButtonType.CANCEL);
+        confirm.setHeaderText("Delete Order");
+        if (confirm.showAndWait().orElse(ButtonType.CANCEL) != ButtonType.OK) {
+            return;
+        }
+
         try {
-            orderDao.delete(sel.getId());
-            loadOrders();
+            orderService.deleteOrder(sel.getId()); // returns stock before deleting
             orderItems.clear();
             shippingCityField.clear();
+            loadOrders();
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            showError(e.getMessage());
         } catch (SQLException e) {
             LOGGER.log(Level.SEVERE, "Failed to delete order", e);
             showError("Failed to delete order: " + e.getMessage());
@@ -437,6 +678,32 @@ public class OrderManagementController {
         stage.setScene(new Scene(box, 380, 390));
         stage.setResizable(false); // prevent the user from resizing the window so receipt layout doesn't break
         stage.showAndWait();
+    }
+
+    @FXML
+    private void handleSaveShippingCity() {
+        Order sel = orderTable.getSelectionModel().getSelectedItem();
+        if (sel == null) {
+            showError("Please select an order first.");
+            return;
+        }
+        if (!"PENDING".equals(sel.getStatus())) {
+            showError("Shipping city can only be changed for PENDING orders.");
+            return;
+        }
+        String city = shippingCityField.getText().trim();
+        if (city.isEmpty()) {
+            showError("Shipping city cannot be empty.");
+            return;
+        }
+        try {
+            sel.setShippingCity(city);
+            orderDao.update(sel);
+            loadOrders();
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Failed to save shipping city", e);
+            showError("Failed to save shipping city: " + e.getMessage());
+        }
     }
 
     @FXML

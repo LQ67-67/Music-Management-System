@@ -58,6 +58,9 @@ public class AdminMainController {
     private DatePicker reportStartDatePicker;
     private DatePicker reportEndDatePicker;
     private Label reportRangeLabel;
+    private ComboBox<String> reportGenreFilter;
+    private TextField reportMinPriceField;
+    private TextField reportMaxPriceField;
 
     private final ObservableList<Track> trackData = FXCollections.observableArrayList();
     private final ObservableList<Customer> customerData = FXCollections.observableArrayList();
@@ -756,12 +759,49 @@ public class AdminMainController {
         reportRangeLabel = new Label("Showing all dates");
         reportRangeLabel.getStyleClass().add("caption");
 
-        reportsTab.setUserData(new Object[]{activeTracksLabel, customerCountLabel, orderCountLabel, totalSalesLabel, reportTable, avgLabel, sumLabel, maxLabel, minLabel, pieCanvas, reportStartDatePicker, reportEndDatePicker, reportRangeLabel});
+        // category (genre) and price range filters; they apply to the "Sales by Genre" report
+        reportGenreFilter = new ComboBox<>();
+        reportGenreFilter.getItems().add("All Genres");
+        reportGenreFilter.setValue("All Genres");
+        reportGenreFilter.setPrefWidth(150);
+        reportGenreFilter.getItems().addAll(loadAvailableGenres());
+
+        reportMinPriceField = new TextField();
+        reportMinPriceField.setPromptText("Min RM");
+        reportMinPriceField.setPrefWidth(80);
+        reportMinPriceField.setTextFormatter(new TextFormatter<>(change ->
+                change.getControlNewText().matches("\\d{0,8}(\\.\\d{0,2})?") ? change : null));
+
+        reportMaxPriceField = new TextField();
+        reportMaxPriceField.setPromptText("Max RM");
+        reportMaxPriceField.setPrefWidth(80);
+        reportMaxPriceField.setTextFormatter(new TextFormatter<>(change ->
+                change.getControlNewText().matches("\\d{0,8}(\\.\\d{0,2})?") ? change : null));
+
+        Label genrePriceHint = new Label("Genre & price filters apply to 'Sales by Genre'");
+        genrePriceHint.getStyleClass().add("caption");
+
+        reportsTab.setUserData(new Object[]{activeTracksLabel, customerCountLabel, orderCountLabel, totalSalesLabel, reportTable, avgLabel, sumLabel, maxLabel, minLabel, pieCanvas, reportStartDatePicker, reportEndDatePicker, reportRangeLabel, reportGenreFilter, reportMinPriceField, reportMaxPriceField});
 
         Button refreshBtn = new Button("🔄 REFRESH REPORTS");
         refreshBtn.getStyleClass().add("neo-button-primary");
         refreshBtn.setOnAction(e -> refreshReport(reportType.getValue()));
         reportType.setOnAction(e -> refreshReport(reportType.getValue()));
+        reportGenreFilter.setOnAction(e -> {
+            if ("Sales by Genre".equals(reportType.getValue())) {
+                refreshReport(reportType.getValue());
+            }
+        });
+        reportMinPriceField.setOnAction(e -> {
+            if ("Sales by Genre".equals(reportType.getValue())) {
+                refreshReport(reportType.getValue());
+            }
+        });
+        reportMaxPriceField.setOnAction(e -> {
+            if ("Sales by Genre".equals(reportType.getValue())) {
+                refreshReport(reportType.getValue());
+            }
+        });
 
         Button exportPieBtn = new Button("📊 EXPORT CHART DATA");
         exportPieBtn.getStyleClass().add("neo-button-secondary");
@@ -796,6 +836,12 @@ public class AdminMainController {
         rangeBox.setAlignment(Pos.CENTER_LEFT);
         rangeBox.getStyleClass().add("report-filter-bar");
 
+        HBox genrePriceBox = new HBox(10,
+                new Label("Genre:"), reportGenreFilter,
+                new Label("Price from"), reportMinPriceField, new Label("to"), reportMaxPriceField, genrePriceHint);
+        genrePriceBox.setAlignment(Pos.CENTER_LEFT);
+        genrePriceBox.getStyleClass().add("report-filter-bar");
+
         // middle-top left: chart area
         VBox chartCard = new VBox(10, new Label("📊 Sales Chart"), canvasPane);
         VBox.setVgrow(canvasPane, Priority.ALWAYS);  // Let the canvasPane fill the remaining space of chartCard
@@ -819,7 +865,7 @@ public class AdminMainController {
 
         VBox.setVgrow(chartCard, Priority.ALWAYS);
 
-        leftColumn.getChildren().addAll(controlsBox, rangeBox, reportRangeLabel, chartCard, tableCard);
+        leftColumn.getChildren().addAll(controlsBox, rangeBox, genrePriceBox, reportRangeLabel, chartCard, tableCard);
 
         // right column: metrics and report actions
         VBox rightColumn = new VBox(20);
@@ -882,7 +928,7 @@ public class AdminMainController {
 
     private void refreshReport(String reportType) {
         Object[] data = (Object[]) reportsTab.getUserData();
-        if (data == null || data.length < 13){
+        if (data == null || data.length < 16){
             return;
         }
 
@@ -897,6 +943,10 @@ public class AdminMainController {
         DatePicker startPicker = (DatePicker) data[10];
         DatePicker endPicker = (DatePicker) data[11];
         Label rangeLabel = (Label) data[12];
+        @SuppressWarnings("unchecked")
+        ComboBox<String> genreFilter = (ComboBox<String>) data[13];
+        TextField minPriceField = (TextField) data[14];
+        TextField maxPriceField = (TextField) data[15];
 
         LocalDate startDate = startPicker.getValue();
         LocalDate endDate = endPicker.getValue();
@@ -905,6 +955,28 @@ public class AdminMainController {
             showError("Start date must be on or before end date.");
             return;
         }
+
+        // genre/price filters only make sense for the genre breakdown, so dim them elsewhere
+        boolean genreFilterApplicable = "Sales by Genre".equals(reportType);
+        genreFilter.setDisable(!genreFilterApplicable);
+        minPriceField.setDisable(!genreFilterApplicable);
+        maxPriceField.setDisable(!genreFilterApplicable);
+
+        BigDecimal minPrice = parsePriceBound(minPriceField.getText(), "Min price");
+        if (minPrice == null && minPriceField.getText() != null && !minPriceField.getText().trim().isEmpty()) {
+            return; // invalid input already reported by parsePriceBound
+        }
+        BigDecimal maxPrice = parsePriceBound(maxPriceField.getText(), "Max price");
+        if (maxPrice == null && maxPriceField.getText() != null && !maxPriceField.getText().trim().isEmpty()) {
+            return;
+        }
+        if (minPrice != null && maxPrice != null && minPrice.compareTo(maxPrice) > 0) {
+            showError("Min price must be less than or equal to max price.");
+            return;
+        }
+
+        String selectedGenre = genreFilterApplicable && genreFilter.getValue() != null
+                && !"All Genres".equals(genreFilter.getValue()) ? genreFilter.getValue() : null;
 
         if (startDate != null || endDate != null) {
             rangeLabel.setText("Date range: " + (startDate != null ? startDate : "…") + " to " + (endDate != null ? endDate : "…"));
@@ -938,7 +1010,41 @@ public class AdminMainController {
             return;
         }
 
-        loadSalesReport(reportType, reportTable, avgLabel, sumLabel, maxLabel, minLabel, pieCanvas, startDate, endDate);
+        loadSalesReport(reportType, reportTable, avgLabel, sumLabel, maxLabel, minLabel, pieCanvas, startDate, endDate, selectedGenre, minPrice, maxPrice);
+    }
+
+    // parse a price-range field; returns null for empty input or on error (with a message shown)
+    private BigDecimal parsePriceBound(String text, String fieldName) {
+        if (text == null || text.trim().isEmpty()) {
+            return null;
+        }
+        try {
+            BigDecimal value = new BigDecimal(text.trim());
+            if (value.compareTo(BigDecimal.ZERO) < 0) {
+                showError(fieldName + " cannot be negative.");
+                return null;
+            }
+            return value;
+        } catch (NumberFormatException e) {
+            showError(fieldName + " must be a valid number (e.g. 9.99).");
+            return null;
+        }
+    }
+
+    // distinct genres of active tracks, used to populate the report genre filter
+    private List<String> loadAvailableGenres() {
+        String sql = "SELECT DISTINCT genre FROM tracks WHERE is_active = 1 AND genre IS NOT NULL AND genre <> '' ORDER BY genre";
+        List<String> genres = new ArrayList<>();
+        try (Connection conn = DBConnectionManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                genres.add(rs.getString("genre"));
+            }
+        } catch (SQLException e) {
+            LOGGER.log(Level.WARNING, "Failed to load genres for report filter", e);
+        }
+        return genres;
     }
 
     // colours used for the pie chart slices
@@ -951,14 +1057,20 @@ public class AdminMainController {
     // Maximum canvas texture dimension to avoid exceeding GPU limits (some GPUs cap at 16384)
     private static final double MAX_CANVAS_DIM = 16000.0;
 
-    private void loadSalesReport(String reportType, TableView<String> reportTable, Label avgLabel, Label sumLabel, Label maxLabel, Label minLabel, Canvas pieCanvas, LocalDate startDate, LocalDate endDate) {
+    private void loadSalesReport(String reportType, TableView<String> reportTable, Label avgLabel, Label sumLabel, Label maxLabel, Label minLabel, Canvas pieCanvas, LocalDate startDate, LocalDate endDate, String genreFilter, BigDecimal minPrice, BigDecimal maxPrice) {
         String sql;
+        boolean bindGenrePrice = false;
         switch (reportType) {
             case "Sales by Genre":
+                // optional track-level filters: genre (category) and price range
                 sql = "SELECT t.genre, SUM(oi.quantity), SUM(oi.line_total) "
                         + "FROM order_items oi JOIN tracks t ON oi.track_id = t.id "
                         + "JOIN orders o ON oi.order_id = o.id WHERE 1=1" + buildOrderDateClause("o.order_date", startDate, endDate)
+                        + (genreFilter != null ? " AND t.genre = ?" : "")
+                        + (minPrice != null ? " AND t.price >= ?" : "")
+                        + (maxPrice != null ? " AND t.price <= ?" : "")
                         + " GROUP BY t.genre ORDER BY 3 DESC";
+                bindGenrePrice = true;
                 break;
             case "Sales by City":
                 sql = "SELECT o.shipping_city, COUNT(o.id), SUM(o.total_amount) FROM orders o WHERE 1=1"
@@ -985,7 +1097,18 @@ public class AdminMainController {
 
         try (Connection conn = DBConnectionManager.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-            bindOrderDateClause(ps, 1, startDate, endDate);
+            int bindIndex = bindOrderDateClause(ps, 1, startDate, endDate);
+            if (bindGenrePrice) {
+                if (genreFilter != null) {
+                    ps.setString(bindIndex++, genreFilter);
+                }
+                if (minPrice != null) {
+                    ps.setBigDecimal(bindIndex++, minPrice);
+                }
+                if (maxPrice != null) {
+                    ps.setBigDecimal(bindIndex++, maxPrice);
+                }
+            }
             try (ResultSet rs = ps.executeQuery()) {
 
                 ObservableList<String> rows = FXCollections.observableArrayList();

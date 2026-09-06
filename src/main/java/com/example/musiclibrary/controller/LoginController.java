@@ -190,9 +190,18 @@ public class LoginController {
         newPasswordField.setPrefWidth(300);
         confirmField.setPrefWidth(300);
 
+        // placeholders tell users the expected format before they type
+        newUsernameField.setPromptText("4-20 characters: letters, numbers or _");
+        newUsernameField.setTextFormatter(new TextFormatter<>(change ->
+            change.getControlNewText().length() <= USERNAME_MAX_LEN ? change : null));
+        newPasswordField.setPromptText("Min 6 chars with A-Z, a-z and 0-9");
+        newPasswordField.setTextFormatter(new TextFormatter<>(change ->
+            change.getControlNewText().length() <= PASSWORD_MAX_LEN ? change : null));
+        confirmField.setPromptText("Re-enter the same password");
+
         GridPane grid = new GridPane();
         grid.setHgap(14);
-        grid.setVgap(14);
+        grid.setVgap(6);
         grid.setPadding(new Insets(20));
         grid.add(new Label("Username:"), 0, 0);
         grid.add(newUsernameField, 1, 0);
@@ -201,13 +210,78 @@ public class LoginController {
         grid.add(new Label("Confirm:"), 0, 2);
         grid.add(confirmField, 1, 2);
 
+        // live hints, one per field, so mistakes are caught while typing instead of on submit
+        Label usernameHint = new Label("");
+        Label passwordHint = new Label("");
+        Label confirmHint = new Label("");
+        usernameHint.getStyleClass().add("caption");
+        passwordHint.getStyleClass().add("caption");
+        confirmHint.getStyleClass().add("caption");
+        usernameHint.setWrapText(true);
+        passwordHint.setWrapText(true);
+        confirmHint.setWrapText(true);
+
+        grid.add(usernameHint, 1, 3);
+        grid.add(passwordHint, 1, 4);
+        grid.add(confirmHint, 1, 5);
+
         Label validationLabel = new Label("");
-        validationLabel.setStyle("-fx-text-fill: red;");
+        validationLabel.setStyle("-fx-text-fill: #d03238; -fx-font-weight: 600;");
+        validationLabel.setWrapText(true);
+
+        Runnable validateInput = () -> {
+            String username = newUsernameField.getText();
+            String password = newPasswordField.getText();
+            String confirm = confirmField.getText();
+
+            if (username.isEmpty()) {
+                usernameHint.setText("");
+            } else if (username.length() < 4 || !username.matches("[A-Za-z0-9_]+")) {
+                usernameHint.setText("✗ Username must be 4-20 characters using letters, numbers or _");
+                usernameHint.setStyle("-fx-text-fill: #d03238;");
+            } else {
+                usernameHint.setText("✓ Username looks good");
+                usernameHint.setStyle("-fx-text-fill: #054d28;");
+            }
+
+            if (password.isEmpty()) {
+                passwordHint.setText("");
+            } else {
+                boolean hasUppercase = password.matches(".*[A-Z].*");
+                boolean hasLowercase = password.matches(".*[a-z].*");
+                boolean hasDigit = password.matches(".*\\d.*");
+                if (password.length() < 6 || !hasUppercase || !hasLowercase || !hasDigit) {
+                    passwordHint.setText(String.format("✗ Needs: %s%s%s%s",
+                            password.length() < 6 ? "6+ chars, " : "",
+                            !hasUppercase ? "uppercase (A-Z), " : "",
+                            !hasLowercase ? "lowercase (a-z), " : "",
+                            !hasDigit ? "digit (0-9)" : "").replaceAll(", $", ""));
+                    passwordHint.setStyle("-fx-text-fill: #d03238;");
+                } else {
+                    passwordHint.setText("✓ Password strength: strong");
+                    passwordHint.setStyle("-fx-text-fill: #054d28;");
+                }
+            }
+
+            if (confirm.isEmpty()) {
+                confirmHint.setText("");
+            } else if (!confirm.equals(password)) {
+                confirmHint.setText("✗ Passwords do not match");
+                confirmHint.setStyle("-fx-text-fill: #d03238;");
+            } else {
+                confirmHint.setText("✓ Passwords match");
+                confirmHint.setStyle("-fx-text-fill: #054d28;");
+            }
+        };
+
+        newUsernameField.textProperty().addListener((obs, o, n) -> validateInput.run());
+        newPasswordField.textProperty().addListener((obs, o, n) -> validateInput.run());
+        confirmField.textProperty().addListener((obs, o, n) -> validateInput.run());
 
         Button registerBtn = new Button("Register");
         registerBtn.setStyle("-fx-background-color: #9fe870; -fx-text-fill: #163300; -fx-padding: 8 20; -fx-border-radius: 9999; -fx-background-radius: 9999; -fx-font-weight: 600;");
         registerBtn.setOnAction(event -> {
-            String u = newUsernameField.getText();
+            String u = newUsernameField.getText().trim();
             String p = newPasswordField.getText();
             String confirm = confirmField.getText();
 
@@ -216,8 +290,13 @@ public class LoginController {
                 return;
             }
 
-            if (u.length() > USERNAME_MAX_LEN) {
-                validationLabel.setText("Username cannot exceed " + USERNAME_MAX_LEN + " characters.");
+            if (u.length() < 4 || !u.matches("[A-Za-z0-9_]+")) {
+                validationLabel.setText("Username must be 4-20 characters using letters, numbers or _.");
+                return;
+            }
+
+            if (p.length() < 6 || !p.matches(".*[A-Z].*") || !p.matches(".*[a-z].*") || !p.matches(".*\\d.*")) {
+                validationLabel.setText("Password needs at least 6 characters with uppercase, lowercase and a digit.");
                 return;
             }
 
@@ -257,14 +336,15 @@ public class LoginController {
         buttons.setAlignment(Pos.CENTER);
         buttons.getChildren().addAll(registerBtn, cancelBtn);
 
-        VBox vbox = new VBox(16);
-        vbox.setPadding(new Insets(20));
+        VBox vbox = new VBox(12);
+        vbox.setPadding(new Insets(16));
         vbox.getChildren().addAll(grid, validationLabel, buttons);
 
-        Scene scene = new Scene(vbox, 450, 300);
+        Scene scene = new Scene(vbox, 520, 400);
         scene.getStylesheets().add(getClass().getResource("/css/app.css").toExternalForm());
         dialog.setScene(scene);
         dialog.centerOnScreen();
+        dialog.setResizable(false);
         dialog.showAndWait();
     }
 }

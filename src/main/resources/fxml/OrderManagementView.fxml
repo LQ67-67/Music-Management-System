@@ -4,11 +4,13 @@
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.Separator?>
 <?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.control.TableView?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.VBox?>
 
 <BorderPane xmlns="http://javafx.com/javafx"
@@ -19,51 +21,74 @@
             prefHeight="864.0">
 
     <top>
-        <HBox spacing="10">
+        <HBox spacing="10" styleClass="header-bar">
             <padding>
-                <Insets top="10" right="10" bottom="10" left="10"/>
+                <Insets top="12" right="16" bottom="12" left="16"/>
             </padding>
             <children>
-                <Label text="My Orders" styleClass="title-label"/>
+                <Label text="📋 MY ORDERS" styleClass="title-label header-title"/>
+                <Label text="Select an order, then edit items inline (PENDING orders only)" styleClass="header-welcome"/>
+                <Region HBox.hgrow="ALWAYS"/>
             </children>
         </HBox>
     </top>
 
     <center>
         <ScrollPane fitToWidth="true" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED" style="-fx-faint-focus-color: transparent; -fx-focus-color: transparent;">
-            <VBox spacing="10">
+            <VBox spacing="12">
                 <padding>
-                    <Insets top="10" right="10" bottom="10" left="10"/>
+                    <Insets top="12" right="16" bottom="16" left="16"/>
                 </padding>
                 <children>
-                    <Label text="Order List:" style="-fx-font-weight: bold;"/>
+                    <Label text="Order List" styleClass="heading-3"/>
                     <TableView fx:id="orderTable" VBox.vgrow="ALWAYS">
                         <columns>
-                            <TableColumn fx:id="colOrderId" text="Order ID" prefWidth="80"/>
-                            <TableColumn fx:id="colOrderDate" text="Date" prefWidth="140"/>
-                            <TableColumn fx:id="colStatus" text="Status" prefWidth="100"/>
-                            <TableColumn fx:id="colTotal" text="Total" prefWidth="100"/>
+                            <TableColumn fx:id="colOrderId" text="Order ID" prefWidth="90"/>
+                            <TableColumn fx:id="colOrderDate" text="Date" prefWidth="150"/>
+                            <TableColumn fx:id="colStatus" text="Status" prefWidth="120"/>
+                            <TableColumn fx:id="colTotal" text="Total" prefWidth="110"/>
                         </columns>
+                        <columnResizePolicy>
+                            <TableView fx:constant="CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN"/>
+                        </columnResizePolicy>
                     </TableView>
 
-                    <Label text="Order Items:" style="-fx-font-weight: bold; -fx-padding: 10 0 0 0;"/>
+                    <Separator styleClass="separator-thick"/>
+
+                    <Label text="Order Items" styleClass="heading-3"/>
+                    <Label text="Use ＋ / － to adjust quantity, 🗑 to remove an item — stock updates automatically."
+                           styleClass="caption" style="-fx-text-fill: #6b7280;"/>
                     <TableView fx:id="orderItemTable" VBox.vgrow="ALWAYS">
                         <columns>
-                            <TableColumn fx:id="colTrack" text="Track" prefWidth="200"/>
-                            <TableColumn fx:id="colQuantity" text="Qty" prefWidth="60"/>
-                            <TableColumn fx:id="colUnitPrice" text="Unit Price" prefWidth="100"/>
-                            <TableColumn fx:id="colLineTotal" text="Line Total" prefWidth="100"/>
+                            <TableColumn fx:id="colTrack" text="Track" prefWidth="260"/>
+                            <TableColumn fx:id="colQuantity" text="Qty" prefWidth="70"/>
+                            <TableColumn fx:id="colUnitPrice" text="Unit Price" prefWidth="110"/>
+                            <TableColumn fx:id="colLineTotal" text="Line Total" prefWidth="120"/>
+                            <TableColumn fx:id="colItemActions" text="Actions" prefWidth="170"/>
                         </columns>
+                        <columnResizePolicy>
+                            <TableView fx:constant="CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN"/>
+                        </columnResizePolicy>
                     </TableView>
 
-                    <HBox spacing="10">
+                    <HBox spacing="10" styleClass="action-row">
+                        <children>
+                            <Button text="➕ ADD ITEM" onAction="#handleAddOrderItem" styleClass="neo-button-secondary"/>
+                        </children>
+                    </HBox>
+
+                    <Separator styleClass="separator-thick"/>
+
+                    <Label text="Shipping &amp; Payment" styleClass="heading-3"/>
+                    <HBox spacing="10" styleClass="action-row">
                         <children>
                             <Label text="Shipping City:"/>
-                            <TextField fx:id="shippingCityField" prefWidth="150"/>
-                            <Button text="Pay Order" onAction="#handlePayOrder"/>
-                            <Button text="Cancel Order" onAction="#handleCancelOrder"/>
-                            <Button text="Delete Order" onAction="#handleDeleteOrder"/>
-                            <Button text="View Invoice" onAction="#handleViewInvoice"/>
+                            <TextField fx:id="shippingCityField" promptText="e.g. Kuala Lumpur" prefWidth="220" styleClass="neo-input"/>
+                            <Button text="💾 SAVE CITY" onAction="#handleSaveShippingCity" styleClass="neo-button-outline"/>
+                            <Button text="💳 PAY ORDER" onAction="#handlePayOrder" styleClass="neo-button-primary"/>
+                            <Button text="✖ CANCEL ORDER" onAction="#handleCancelOrder" styleClass="neo-button-danger"/>
+                            <Button text="🗑 DELETE ORDER" onAction="#handleDeleteOrder" styleClass="neo-button-danger"/>
+                            <Button text="🧾 VIEW INVOICE" onAction="#handleViewInvoice" styleClass="neo-button-outline"/>
                         </children>
                     </HBox>
                 </children>
@@ -71,4 +96,3 @@
         </ScrollPane>
     </center>
 </BorderPane>
-
