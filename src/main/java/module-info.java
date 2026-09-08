@@ -4,6 +4,7 @@ module com.example.musiclibrary {
     requires javafx.media;
     requires java.sql;
     requires mysql.connector.j;
+    requires com.zaxxer.hikari;
 
     exports com.example.musiclibrary;
     exports com.example.musiclibrary.model;

@@ -118,3 +118,5 @@ run/
 
 # Code simplifier Requirements
 *.code-simplifier.md
+# Local database credentials
+db.properties

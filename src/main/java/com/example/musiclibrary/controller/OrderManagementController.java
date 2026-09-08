@@ -8,6 +8,7 @@ import com.example.musiclibrary.model.OrderItem;
 import com.example.musiclibrary.model.Track;
 import com.example.musiclibrary.service.OrderService;
 import com.example.musiclibrary.session.SessionManager;
+import com.example.musiclibrary.util.Async;
 import javafx.beans.property.*;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -95,6 +96,8 @@ public class OrderManagementController {
 
         orderTable.setItems(orders);
         orderItemTable.setItems(orderItems);
+        orderTable.setPlaceholder(placeholderLabel("NO ORDERS YET // BUY SOMETHING FROM THE STORE"));
+        orderItemTable.setPlaceholder(placeholderLabel("SELECT AN ORDER TO SEE ITS ITEMS"));
 
         orderTable.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal != null) {
@@ -110,27 +113,30 @@ public class OrderManagementController {
         loadOrders(); // load orders when nothing wrong happened with the best cases (>_<)
     }
 
+    private Label placeholderLabel(String text) {
+        Label label = new Label(text);
+        label.getStyleClass().add("caption");
+        return label;
+    }
+
     private void loadOrders() {
         if (!SessionManager.isLoggedIn()) {
             showError("You must be logged in to view orders."); // tbh this should never happen because the app should redirect to login if not authenticated, but just in case
             return;
         }
-        try {
-            List<Order> list = orderDao.findByUser(SessionManager.getCurrentUser().getId()); // load orders for the current logged in user only, not all orders in the system
-            orders.setAll(list);
-        } catch (SQLException e) {
-            LOGGER.log(Level.SEVERE, "Failed to load orders", e); // log the full stack trace  if something wrong
-            showError("Failed to load orders: " + e.getMessage());
-        }
+        int userId = SessionManager.getCurrentUser().getId();
+        Async.run("load-orders", () -> orderDao.findByUser(userId), // load orders for the current logged in user only, not all orders in the system
+                orders::setAll,
+                ex -> showError("Failed to load orders: " + ex.getMessage()));
     }
 
     private void loadOrderItems(int orderId) {
-        try {
-            orderItems.setAll(orderItemDao.findByOrder(orderId)); // load order items for the selected order only, not all order items in the system, same with the previous one
-        } catch (SQLException e) {
-            LOGGER.log(Level.SEVERE, "Failed to load order items", e);
-            showError("Failed to load order items: " + e.getMessage());
-        }
+        Async.run("load-order-items", () -> orderItemDao.findByOrder(orderId),
+                items -> {
+                    orderItems.setAll(items);
+                    orderItemTable.refresh();
+                },
+                ex -> showError("Failed to load order items: " + ex.getMessage()));
     }
 
     // inline +/-/remove buttons per item row; only rendered for PENDING orders so paid/cancelled history stays read-only

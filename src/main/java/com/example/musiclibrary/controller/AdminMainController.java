@@ -2,12 +2,14 @@ package com.example.musiclibrary.controller;
 
 import com.example.musiclibrary.MusicLibraryApp;
 import com.example.musiclibrary.dao.CustomerDao;
+import com.example.musiclibrary.dao.OrderDao;
 import com.example.musiclibrary.dao.TrackDao;
 import com.example.musiclibrary.db.DBConnectionManager;
 import com.example.musiclibrary.model.Customer;
 import com.example.musiclibrary.model.Track;
 import com.example.musiclibrary.service.ExportService;
 import com.example.musiclibrary.session.SessionManager;
+import com.example.musiclibrary.util.Async;
 import com.example.musiclibrary.util.TrackMediaResolver;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleObjectProperty;
@@ -68,6 +70,7 @@ public class AdminMainController {
 
     private final TrackDao trackDao = new TrackDao();
     private final CustomerDao customerDao = new CustomerDao();
+    private final OrderDao orderDao = new OrderDao();
     private final ExportService exportService = new ExportService();
 
     // resource directories for uploaded files
@@ -101,6 +104,7 @@ public class AdminMainController {
     private VBox buildTracksTabContent() {
         TableView<Track> trackTable = new TableView<>(trackData);
         trackTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN); // let the last column take up remaining space
+        trackTable.setPlaceholder(new Label("NO TRACKS // ADD ONE TO GET STARTED"));
 
         TableColumn<Track, Track> imageCol = new TableColumn<>("Image");
         imageCol.setPrefWidth(110);
@@ -173,6 +177,17 @@ public class AdminMainController {
             }
         });
 
+        Button stockBtn = new Button("± STOCK");
+        stockBtn.getStyleClass().add("neo-button-outline");
+        stockBtn.setOnAction(e -> {
+            Track sel = trackTable.getSelectionModel().getSelectedItem();
+            if (sel != null) {
+                showStockAdjustDialog(sel);
+            } else {
+                showError("Please select a track to adjust stock.");
+            }
+        });
+
         Button exportBtn = new Button("📥 EXPORT LIST");
         exportBtn.getStyleClass().add("neo-button-outline");
         exportBtn.setOnAction(e -> exportService.exportTableToTxt("Tracks", new String[]{"ID", "Title", "Artist", "Album", "Genre", "Price", "Stock"},
@@ -183,7 +198,7 @@ public class AdminMainController {
                         String.valueOf(t.getStockQty())
                 }).collect(java.util.stream.Collectors.toList()), tabPane.getScene().getWindow()));
 
-        HBox buttonBox = new HBox(10, addBtn, editBtn, deleteBtn, exportBtn);
+        HBox buttonBox = new HBox(10, addBtn, editBtn, stockBtn, deleteBtn, exportBtn);
         VBox mainBox = new VBox(10, new Label("Track List"), trackTable, buttonBox);
         mainBox.setPadding(new Insets(12));
         VBox.setVgrow(trackTable, Priority.ALWAYS);
@@ -191,12 +206,9 @@ public class AdminMainController {
     }
 
     private void loadTracks() {
-        try {
-            trackData.setAll(trackDao.findAllActive()); // only load active tracks for management
-        } catch (SQLException e) {
-            LOGGER.log(Level.SEVERE, "Failed to load tracks", e);
-            showError("Failed to load tracks from database: " + e.getMessage());
-        }
+        Async.run("admin-load-tracks", trackDao::findAllActive, // only load active tracks for management
+                trackData::setAll,
+                ex -> showError("Failed to load tracks from database: " + ex.getMessage()));
     }
 
     // Add/Edit track dialog — includes image and audio file pickers.
@@ -407,6 +419,92 @@ public class AdminMainController {
         return dot >= 0 ? name.substring(dot) : "";
     }
 
+    // quick ± stock adjustment without opening the full track editor
+    private void showStockAdjustDialog(Track track) {
+        Stage dialog = new Stage();
+        dialog.initModality(Modality.APPLICATION_MODAL);
+        dialog.setTitle("Adjust Stock — Track #" + track.getId());
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(20));
+        grid.getStyleClass().add("dialog-form-grid");
+
+        Label titleLabel = new Label(track.getTitle() + " — " + track.getArtist());
+        titleLabel.setWrapText(true);
+        titleLabel.setMaxWidth(320);
+
+        Label currentLabel = new Label("Current stock: " + track.getStockQty());
+        currentLabel.getStyleClass().add("dialog-form-label");
+
+        Spinner<Integer> deltaSpinner = new Spinner<>(-1000, 1000, 10);
+        deltaSpinner.setEditable(true);
+        deltaSpinner.setPrefWidth(110);
+
+        Label previewLabel = new Label();
+        previewLabel.getStyleClass().add("body-semibold");
+        Runnable updatePreview = () -> {
+            int newStock = Math.max(0, track.getStockQty() + deltaSpinner.getValue());
+            previewLabel.setText("New stock: " + newStock);
+        };
+        deltaSpinner.valueProperty().addListener((obs, o, n) -> updatePreview.run());
+        updatePreview.run();
+
+        grid.add(new Label("Track:"), 0, 0);
+        grid.add(titleLabel, 1, 0);
+        grid.add(currentLabel, 0, 1);
+        grid.add(deltaSpinner, 1, 1);
+        grid.add(new Label("Change by (±):"), 0, 2);
+        grid.add(previewLabel, 1, 2);
+
+        Label validationLabel = new Label();
+        validationLabel.setStyle("-fx-text-fill: #FF6B6B; -fx-font-weight: 600;");
+
+        Button applyBtn = new Button("APPLY →");
+        applyBtn.getStyleClass().add("neo-button-primary");
+        applyBtn.setOnAction(e -> {
+            int newStock = track.getStockQty() + deltaSpinner.getValue();
+            if (newStock < 0) {
+                validationLabel.setText("Resulting stock cannot be negative.");
+                return;
+            }
+            int delta = deltaSpinner.getValue();
+            applyBtn.setDisable(true);
+            Async.run("admin-adjust-stock", () -> {
+                        trackDao.adjustStock(track.getId(), delta);
+                        return true;
+                    },
+                    ok -> {
+                        applyBtn.setDisable(false);
+                        loadTracks();
+                        dialog.close();
+                    },
+                    ex -> {
+                        applyBtn.setDisable(false);
+                        validationLabel.setText("Failed to adjust stock: " + ex.getMessage());
+                    });
+        });
+
+        Button cancelBtn = new Button("❌ CANCEL");
+        cancelBtn.getStyleClass().add("neo-button-outline");
+        cancelBtn.setOnAction(e -> dialog.close());
+
+        HBox buttonLayout = new HBox(10, applyBtn, cancelBtn);
+        buttonLayout.setAlignment(Pos.CENTER);
+
+        VBox mainLayout = new VBox(10, grid, validationLabel, buttonLayout);
+        mainLayout.setPadding(new Insets(10));
+        Scene scene = new Scene(mainLayout);
+        scene.getStylesheets().add(getClass().getResource("/css/app.css").toExternalForm());
+        dialog.setScene(scene);
+        dialog.setWidth(480);
+        dialog.setHeight(320);
+        dialog.setMinWidth(440);
+        dialog.setMinHeight(280);
+        dialog.showAndWait();
+    }
+
     private void deleteTrack(Track track) {
         try {
             trackDao.delete(track.getId());
@@ -421,6 +519,7 @@ public class AdminMainController {
     private VBox buildCustomersTabContent() {
         TableView<Customer> customerTable = new TableView<>(customerData);
         customerTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
+        customerTable.setPlaceholder(new Label("NO CUSTOMERS YET"));
 
         TableColumn<Customer, String> nameCol = new TableColumn<>("Name");
         nameCol.setCellValueFactory(p -> new SimpleStringProperty(p.getValue().getName()));
@@ -474,12 +573,9 @@ public class AdminMainController {
     }
 
     private void loadCustomers() {
-        try {
-            customerData.setAll(customerDao.findAll()); // load all customers for management (even those without orders)
-        } catch (SQLException e) {
-            LOGGER.log(Level.SEVERE, "Failed to load customers", e);
-            showError("Failed to load customers: " + e.getMessage());
-        }
+        Async.run("admin-load-customers", customerDao::findAll, // load all customers for management (even those without orders)
+                customerData::setAll,
+                ex -> showError("Failed to load customers: " + ex.getMessage()));
     }
 
     private void showCustomerDialog(Customer customer) {
@@ -582,6 +678,7 @@ public class AdminMainController {
     private VBox buildOrdersTabContent() {
         TableView<String[]> orderTable = new TableView<>(orderData);
         orderTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN); // let the last column take up remaining space
+        orderTable.setPlaceholder(new Label("NO ORDERS YET"));
 
         String[] headers = {"Order ID", "Username", "Customer Name", "Order Date", "Status", "Total", "Shipping City"};
         for (int i = 0; i < headers.length; i++) { // use loop to create columns based on the headers array
@@ -657,19 +754,23 @@ public class AdminMainController {
                 validationLabel.setText("Please select a status.");  // check if status is null before saving
                 return;
             }
-            String sql = "UPDATE orders SET status = ?, shipping_city = ? WHERE id = ?"; // only allow editing of status and shipping city
-            try (Connection conn = DBConnectionManager.getConnection();
-                 PreparedStatement ps = conn.prepareStatement(sql)) {
-                ps.setString(1, statusBox.getValue());
-                ps.setString(2, cityField.getText());
-                ps.setInt(3, Integer.parseInt(row[0]));
-                ps.executeUpdate();
-                loadOrders();
-                dialog.close();
-            } catch (SQLException ex) {
-                LOGGER.log(Level.SEVERE, "Failed to update order", ex);
-                validationLabel.setText("Failed to update order: " + ex.getMessage());
-            }
+            int orderId = Integer.parseInt(row[0]);
+            String newStatus = statusBox.getValue();
+            String newCity = cityField.getText();
+            saveBtn.setDisable(true);
+            Async.run("admin-update-order", () -> {
+                        orderDao.updateStatusAndCity(orderId, newStatus, newCity);
+                        return true;
+                    },
+                    ok -> {
+                        saveBtn.setDisable(false);
+                        loadOrders();
+                        dialog.close();
+                    },
+                    ex -> {
+                        saveBtn.setDisable(false);
+                        validationLabel.setText("Failed to update order: " + ex.getMessage());
+                    });
         });
 
         Button cancelBtn = new Button("❌ CANCEL");
@@ -692,30 +793,9 @@ public class AdminMainController {
     }
 
     private void loadOrders() {
-        String sql = "SELECT o.id, u.username, c.name, o.order_date, o.status, o.total_amount, o.shipping_city "
-                + "FROM orders o JOIN users u ON o.user_id = u.id JOIN customers c ON o.customer_id = c.id "
-                + "ORDER BY o.order_date DESC"; // load all orders with user and customer info for display in orders management tab, sorted by most recent order date first
-        try (Connection conn = DBConnectionManager.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
-
-            ObservableList<String[]> rows = FXCollections.observableArrayList();
-            while (rs.next()) {
-                rows.add(new String[]{
-                        String.valueOf(rs.getInt("id")),
-                        rs.getString("username"),
-                        rs.getString("name"),
-                        rs.getTimestamp("order_date").toString(),
-                        rs.getString("status"),
-                        rs.getString("total_amount"),
-                        rs.getString("shipping_city")
-                });
-            }
-            orderData.setAll(rows);
-        } catch (SQLException e) {
-            LOGGER.log(Level.SEVERE, "Failed to load orders", e);
-            showError("Failed to load orders: " + e.getMessage());
-        }
+        Async.run("admin-load-orders", orderDao::findOrderSummaries,
+                orderData::setAll,
+                ex -> showError("Failed to load orders: " + ex.getMessage()));
     }
 
     // reports tab
@@ -734,6 +814,7 @@ public class AdminMainController {
 
         TableView<String> reportTable = new TableView<>();
         reportTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
+        reportTable.setPlaceholder(new Label("RUN A REPORT TO SEE RESULTS"));
         reportTable.setPrefHeight(220);
         reportTable.setMinHeight(150);
 
@@ -991,24 +1072,31 @@ public class AdminMainController {
                 + "(SELECT COUNT(*) FROM orders o WHERE 1=1" + orderDateClause + ") AS orders, "
                 + "(SELECT COALESCE(SUM(total_amount), 0) FROM orders o WHERE 1=1" + orderDateClause + ") AS total_sales";
 
-        try (Connection conn = DBConnectionManager.getConnection();
-             PreparedStatement ps = conn.prepareStatement(summarySql)) {
-            int bindIndex = 1;
-            bindIndex = bindOrderDateClause(ps, bindIndex, startDate, endDate);
-            bindIndex = bindOrderDateClause(ps, bindIndex, startDate, endDate);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    activeTracksLabel.setText("Active Tracks: " + rs.getInt("active_tracks"));
-                    customerCountLabel.setText("Customers: " + rs.getInt("customers"));
-                    orderCountLabel.setText("Orders: " + rs.getInt("orders"));
-                    totalSalesLabel.setText("Total Sales: " + rs.getBigDecimal("total_sales"));
+        record ReportSummary(int activeTracks, int customers, int orders, BigDecimal totalSales) {
+        }
+        Async.run("report-summary", () -> {
+            try (Connection conn = DBConnectionManager.getConnection();
+                 PreparedStatement ps = conn.prepareStatement(summarySql)) {
+                int bindIndex = 1;
+                bindIndex = bindOrderDateClause(ps, bindIndex, startDate, endDate);
+                bindOrderDateClause(ps, bindIndex, startDate, endDate);
+                try (ResultSet rs = ps.executeQuery()) {
+                    return rs.next()
+                            ? new ReportSummary(rs.getInt("active_tracks"), rs.getInt("customers"),
+                            rs.getInt("orders"), rs.getBigDecimal("total_sales"))
+                            : null;
                 }
             }
-        } catch (SQLException e) {
-            LOGGER.log(Level.SEVERE, "Failed to load report summary", e);
-            showError("Failed to load report summary: " + e.getMessage());
-            return;
-        }
+        },
+                summary -> {
+                    if (summary != null) {
+                        activeTracksLabel.setText("Active Tracks: " + summary.activeTracks());
+                        customerCountLabel.setText("Customers: " + summary.customers());
+                        orderCountLabel.setText("Orders: " + summary.orders());
+                        totalSalesLabel.setText("Total Sales: " + summary.totalSales());
+                    }
+                },
+                ex -> showError("Failed to load report summary: " + ex.getMessage()));
 
         loadSalesReport(reportType, reportTable, avgLabel, sumLabel, maxLabel, minLabel, pieCanvas, startDate, endDate, selectedGenre, minPrice, maxPrice);
     }
@@ -1095,71 +1183,88 @@ public class AdminMainController {
                 return;
         }
 
-        try (Connection conn = DBConnectionManager.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            int bindIndex = bindOrderDateClause(ps, 1, startDate, endDate);
-            if (bindGenrePrice) {
-                if (genreFilter != null) {
-                    ps.setString(bindIndex++, genreFilter);
-                }
-                if (minPrice != null) {
-                    ps.setBigDecimal(bindIndex++, minPrice);
-                }
-                if (maxPrice != null) {
-                    ps.setBigDecimal(bindIndex++, maxPrice);
-                }
-            }
-            try (ResultSet rs = ps.executeQuery()) {
-
-                ObservableList<String> rows = FXCollections.observableArrayList();
-                List<String> labels = new ArrayList<>();
-                List<Double> values = new ArrayList<>();
-                double sum = 0, max = Double.MIN_VALUE, min = Double.MAX_VALUE;
-                int count = 0;
-
-                lastPieData.clear();
-                lastPieTitle = reportType;
-
-                while (rs.next()) {
-                    double value = rs.getDouble(3);
-                    String label = rs.getString(1);
-                    sum += value; max = Math.max(max, value); min = Math.min(min, value); count++;
-                    rows.add(String.format("%s: %.2f", label, value));
-                    labels.add(label);
-                    values.add(value);
-                    lastPieData.add(new String[]{label, String.format("%.2f", value)});
-                }
-
-                reportTable.getColumns().clear();
-                TableColumn<String, String> resultCol = new TableColumn<>("Result");
-                resultCol.setCellValueFactory(p -> new SimpleStringProperty(p.getValue())); // single column with the formatted string result
-                reportTable.getColumns().add(resultCol);
-                reportTable.setItems(rows);
-
-                if (count > 0) {
-                    avgLabel.setText(String.format("Average: %.2f", sum / count));
-                    sumLabel.setText(String.format("Total: %.2f", sum));
-                    maxLabel.setText(String.format("Maximum: %.2f", max));
-                    minLabel.setText(String.format("Minimum: %.2f", min));
-                    lastChartLabels.clear();
-                    lastChartLabels.addAll(labels);
-                    lastChartValues.clear();
-                    lastChartValues.addAll(values);
-                    lastChartType = reportType;
-                    drawPieChart(pieCanvas, labels, values, reportType);
-                } else {
-                    // no data returned — clear everything including the canvas
-                    avgLabel.setText(""); sumLabel.setText(""); maxLabel.setText(""); minLabel.setText("");
-                    lastChartLabels.clear();
-                    lastChartValues.clear();
-                    lastChartType = "";
-                    clearPieCanvas(pieCanvas);
-                }
-            }
-        } catch (SQLException e) {
-            LOGGER.log(Level.SEVERE, "Failed to load sales report", e);
-            showError("Failed to load sales report: " + e.getMessage());
+        record SalesData(List<String[]> pieRows, List<String> labels, List<Double> values) {
         }
+        final boolean withGenrePrice = bindGenrePrice;
+        Async.run("report-sales-" + reportType, () -> {
+            List<String[]> pieRows = new ArrayList<>();
+            List<String> labels = new ArrayList<>();
+            List<Double> values = new ArrayList<>();
+            try (Connection conn = DBConnectionManager.getConnection();
+                 PreparedStatement ps = conn.prepareStatement(sql)) {
+                int bindIndex = bindOrderDateClause(ps, 1, startDate, endDate);
+                if (withGenrePrice) {
+                    if (genreFilter != null) {
+                        ps.setString(bindIndex++, genreFilter);
+                    }
+                    if (minPrice != null) {
+                        ps.setBigDecimal(bindIndex++, minPrice);
+                    }
+                    if (maxPrice != null) {
+                        ps.setBigDecimal(bindIndex++, maxPrice);
+                    }
+                }
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        double value = rs.getDouble(3);
+                        String label = rs.getString(1);
+                        pieRows.add(new String[]{label, String.format("%.2f", value)});
+                        labels.add(label);
+                        values.add(value);
+                    }
+                }
+            }
+            return new SalesData(pieRows, labels, values);
+        },
+                data -> {
+                    lastPieData.clear();
+                    lastPieData.addAll(data.pieRows());
+                    lastPieTitle = reportType;
+
+                    reportTable.getColumns().clear();
+                    TableColumn<String, String> resultCol = new TableColumn<>("Result");
+                    resultCol.setCellValueFactory(p -> new SimpleStringProperty(p.getValue())); // single column with the formatted string result
+                    reportTable.getColumns().add(resultCol);
+
+                    ObservableList<String> rows = FXCollections.observableArrayList();
+                    for (String[] pieRow : data.pieRows()) {
+                        rows.add(pieRow[0] + ": " + pieRow[1]);
+                    }
+                    reportTable.setItems(rows);
+
+                    double sum = 0, max = Double.MIN_VALUE, min = Double.MAX_VALUE;
+                    for (double value : data.values()) {
+                        sum += value;
+                        max = Math.max(max, value);
+                        min = Math.min(min, value);
+                    }
+                    int count = data.values().size();
+
+                    if (count > 0) {
+                        avgLabel.setText(String.format("Average: %.2f", sum / count));
+                        sumLabel.setText(String.format("Total: %.2f", sum));
+                        maxLabel.setText(String.format("Maximum: %.2f", max));
+                        minLabel.setText(String.format("Minimum: %.2f", min));
+                        lastChartLabels.clear();
+                        lastChartLabels.addAll(data.labels());
+                        lastChartValues.clear();
+                        lastChartValues.addAll(data.values());
+                        lastChartType = reportType;
+                        if ("Sales by Date".equals(reportType)) {
+                            drawLineChart(pieCanvas, data.labels(), data.values(), reportType);
+                        } else {
+                            drawPieChart(pieCanvas, data.labels(), data.values(), reportType);
+                        }
+                    } else {
+                        // no data returned — clear everything including the canvas
+                        avgLabel.setText(""); sumLabel.setText(""); maxLabel.setText(""); minLabel.setText("");
+                        lastChartLabels.clear();
+                        lastChartValues.clear();
+                        lastChartType = "";
+                        clearPieCanvas(pieCanvas);
+                    }
+                },
+                ex -> showError("Failed to load sales report: " + ex.getMessage()));
     }
 
     // drawing pie chart with legend on the given Canvas.
@@ -1254,7 +1359,109 @@ public class AdminMainController {
             clearPieCanvas(canvas);
             return;
         }
-        drawPieChart(canvas, lastChartLabels, lastChartValues, lastChartType);
+        if ("Sales by Date".equals(lastChartType)) {
+            drawLineChart(canvas, lastChartLabels, lastChartValues, lastChartType);
+        } else {
+            drawPieChart(canvas, lastChartLabels, lastChartValues, lastChartType);
+        }
+    }
+
+    // simple monochrome line chart for time-series reports (Sales by Date)
+    private void drawLineChart(Canvas canvas, List<String> labels, List<Double> values, String title) {
+        GraphicsContext gc = canvas.getGraphicsContext2D();
+        double width = canvas.getWidth();
+        double height = canvas.getHeight();
+        double drawWidth = Math.min(width, MAX_CANVAS_DIM);
+        double drawHeight = Math.min(height, MAX_CANVAS_DIM);
+        gc.clearRect(0, 0, drawWidth, drawHeight);
+
+        // dates come back DESC from SQL; a time series must run left-to-right
+        TreeMap<String, Double> series = new TreeMap<>();
+        for (int i = 0; i < labels.size(); i++) {
+            String label = labels.get(i) == null || labels.get(i).isEmpty() ? "(None)" : labels.get(i);
+            series.merge(label, values.get(i), Double::sum);
+        }
+
+        if (series.isEmpty()) {
+            drawChartNoData(canvas, gc, width, height);
+            return;
+        }
+
+        double left = 74, right = 30, top = 34, bottom = 44;
+        double plotW = Math.max(40, width - left - right);
+        double plotH = Math.max(40, height - top - bottom);
+        double maxValue = Math.max(1, series.values().stream().mapToDouble(Double::doubleValue).max().orElse(1));
+
+        // horizontal grid + y-axis labels
+        gc.setTextAlign(javafx.scene.text.TextAlignment.RIGHT);
+        gc.setTextBaseline(javafx.geometry.VPos.CENTER);
+        int yTicks = 4;
+        for (int i = 0; i <= yTicks; i++) {
+            double frac = i / (double) yTicks;
+            double y = top + plotH * (1 - frac);
+            gc.setStroke(Color.web("#262626"));
+            gc.setLineWidth(1);
+            gc.strokeLine(left, y, left + plotW, y);
+            gc.setFill(Color.web("#8A8A8A"));
+            gc.setFont(Font.font("System", 10));
+            gc.fillText(String.format("%.0f", maxValue * frac), left - 8, y);
+        }
+
+        // axes
+        gc.setStroke(Color.web("#FFFFFF"));
+        gc.setLineWidth(1);
+        gc.strokeLine(left, top, left, top + plotH);
+        gc.strokeLine(left, top + plotH, left + plotW, top + plotH);
+
+        // series line + points
+        int n = series.size();
+        double[] xs = new double[n];
+        double[] ys = new double[n];
+        int idx = 0;
+        for (Map.Entry<String, Double> entry : series.entrySet()) {
+            double x = left + (n == 1 ? plotW / 2.0 : plotW * idx / (double) (n - 1));
+            double y = top + plotH * (1 - entry.getValue() / maxValue);
+            xs[idx] = x;
+            ys[idx] = y;
+            idx++;
+        }
+
+        gc.setStroke(Color.web("#FFFFFF"));
+        gc.setLineWidth(2);
+        gc.strokePolyline(xs, ys, n);
+        gc.setFill(Color.web("#FFFFFF"));
+        for (int i = 0; i < n; i++) {
+            gc.fillOval(xs[i] - 3, ys[i] - 3, 6, 6);
+        }
+
+        // x-axis labels: skip entries when they would overlap
+        gc.setTextAlign(javafx.scene.text.TextAlignment.CENTER);
+        gc.setTextBaseline(javafx.geometry.VPos.TOP);
+        gc.setFill(Color.web("#8A8A8A"));
+        gc.setFont(Font.font("System", 10));
+        int step = Math.max(1, (int) Math.ceil(n / 8.0));
+        idx = 0;
+        for (String key : series.keySet()) {
+            if (idx % step == 0) {
+                gc.fillText(key, xs[idx], top + plotH + 8);
+            }
+            idx++;
+        }
+
+        gc.setTextAlign(javafx.scene.text.TextAlignment.LEFT);
+        gc.setFill(Color.web("#FFFFFF"));
+        gc.setFont(Font.font("System", FontWeight.BOLD, 12));
+        gc.fillText(title, left, 12);
+    }
+
+    private void drawChartNoData(Canvas canvas, GraphicsContext gc, double width, double height) {
+        gc.setFill(Color.web("#0A0A0A"));
+        gc.fillRect(0, 0, width, height);
+        gc.setFill(Color.web("#8A8A8A"));
+        gc.setFont(Font.font("System", FontWeight.BOLD, 14));
+        gc.setTextAlign(javafx.scene.text.TextAlignment.CENTER);
+        gc.setTextBaseline(javafx.geometry.VPos.CENTER);
+        gc.fillText("No chart data to display", width / 2.0, height / 2.0);
     }
 
     private String fitTextToWidth(String text, Font font, double maxWidth) {

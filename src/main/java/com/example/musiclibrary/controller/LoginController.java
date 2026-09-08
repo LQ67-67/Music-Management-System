@@ -3,6 +3,7 @@ package com.example.musiclibrary.controller;
 import com.example.musiclibrary.dao.UserDao;
 import com.example.musiclibrary.model.User;
 import com.example.musiclibrary.session.SessionManager;
+import com.example.musiclibrary.util.PasswordUtil;
 
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -143,9 +144,14 @@ public class LoginController {
 
         try {
             User user = userDao.findByUsername(username);
-            if (user == null || !password.equals(user.getPasswordHash())) {
+            if (user == null || !PasswordUtil.verify(password, user.getPasswordHash())) {
                 errorLabel.setText("Wrong username or password.");
                 return;
+            }
+
+            // transparent migration: upgrade legacy plaintext rows to PBKDF2 hashes
+            if (PasswordUtil.needsRehash(user.getPasswordHash())) {
+                userDao.updatePasswordHash(user.getId(), PasswordUtil.hash(password));
             }
 
             SessionManager.setCurrentUser(user);

@@ -12,6 +12,9 @@ import com.example.musiclibrary.model.Track;
 import com.example.musiclibrary.model.User;
 import com.example.musiclibrary.service.OrderService;
 import com.example.musiclibrary.session.SessionManager;
+import com.example.musiclibrary.util.Async;
+import com.example.musiclibrary.util.CartStore;
+import com.example.musiclibrary.util.Toast;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
@@ -35,8 +38,13 @@ import javafx.stage.Stage;
 
 import java.math.BigDecimal;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -45,6 +53,7 @@ public class UserMainController {
 
     @FXML private Label welcomeLabel;
     @FXML private TextField searchField;
+    @FXML private ComboBox<String> genreFilter;
     @FXML private FlowPane trackGrid;
 
     private final ObservableList<Track> trackData = FXCollections.observableArrayList();
@@ -55,6 +64,7 @@ public class UserMainController {
     private final UserDao userDao = new UserDao();
     private final OrderService orderService = new OrderService();
     private final Map<Integer, Integer> quantitySelections = new HashMap<>();
+    private List<Track> allTracksCache = new ArrayList<>(); // full active catalog for client-side filtering
 
     private Track selectedTrack = null;
     private VBox selectedCardPane = null;
@@ -73,6 +83,16 @@ public class UserMainController {
         trackGrid.setPrefWrapLength(1180);
         trackGrid.prefWrapLengthProperty().bind(trackGrid.widthProperty().subtract(24));
         trackGrid.setMaxWidth(Double.MAX_VALUE);
+
+        // genre filter re-applies the client-side filters on selection
+        genreFilter.getItems().add("All Genres");
+        genreFilter.setValue("All Genres");
+        genreFilter.setOnAction(e -> applyFilters());
+
+        // restore the cart saved from a previous session
+        if (SessionManager.getCurrentUser() != null) {
+            cartItems.setAll(CartStore.load(SessionManager.getCurrentUser().getId()));
+        }
 
         // Setup the track grid
         setupTrackGrid();
@@ -166,12 +186,20 @@ public class UserMainController {
         }
 
         try {
-            Customer existingCustomer = customerDao.findAll().stream()
-                    .filter(c -> currentUser.getUsername().equalsIgnoreCase(c.getName()))
-                    .findFirst().orElse(null);
+            Customer existingCustomer = customerDao.findByUserId(currentUser.getId());
+            if (existingCustomer == null) {
+                // legacy fallback: match by name and create the link
+                existingCustomer = customerDao.findAll().stream()
+                        .filter(c -> currentUser.getUsername().equalsIgnoreCase(c.getName()))
+                        .findFirst().orElse(null);
+                if (existingCustomer != null) {
+                    customerDao.linkToUser(existingCustomer.getId(), currentUser.getId());
+                }
+            }
 
             if (existingCustomer == null) {
                 existingCustomer = new Customer();
+                existingCustomer.setUserId(currentUser.getId());
                 existingCustomer.setName(currentUser.getUsername());
                 existingCustomer.setEmail("");
                 existingCustomer.setPhone("");
@@ -267,16 +295,34 @@ public class UserMainController {
 
     @FXML
     private void handleSearch() {
-        String keyword = searchField.getText();
-        try {
-            trackData.setAll(keyword == null || keyword.isEmpty()
-                    ? trackDao.findAllActive()
-                    : trackDao.searchActiveByKeyword(keyword.trim()));
-        } catch (SQLException e) {
-            LOGGER.log(Level.SEVERE, "Search failed", e);
-            showError("Failed to search tracks: " + e.getMessage());
-        }
+        applyFilters(); // keyword + genre are filtered client-side against the cached catalog
     }
+
+    /** Apply keyword and genre filters to the cached catalog, in-stock items first. */
+    private void applyFilters() {
+        String keyword = searchField.getText() == null ? "" : searchField.getText().trim().toLowerCase();
+        String genre = genreFilter.getValue();
+
+        List<Track> filtered = new ArrayList<>();
+        for (Track t : allTracksCache) {
+            boolean matchesKeyword = keyword.isEmpty()
+                    || (t.getTitle() != null && t.getTitle().toLowerCase().contains(keyword))
+                    || (t.getArtist() != null && t.getArtist().toLowerCase().contains(keyword))
+                    || (t.getAlbum() != null && t.getAlbum().toLowerCase().contains(keyword));
+            boolean matchesGenre = genre == null || "All Genres".equals(genre)
+                    || (t.getGenre() != null && t.getGenre().equalsIgnoreCase(genre));
+            if (matchesKeyword && matchesGenre) {
+                filtered.add(t);
+            }
+        }
+        filtered.sort(SOLD_OUT_LAST); // keep purchasable tracks at the front
+        trackData.setAll(filtered);
+    }
+
+    // in-stock first, then alphabetical; sold-out items sink to the bottom instead of blocking the grid
+    private static final Comparator<Track> SOLD_OUT_LAST = Comparator
+            .comparing((Track t) -> t.getStockQty() <= 0)
+            .thenComparing(t -> t.getTitle() == null ? "" : t.getTitle());
 
     @FXML
     private void handleAddToCart() {
@@ -300,6 +346,9 @@ public class UserMainController {
 
         TableView<OrderItem> cartTable = new TableView<>(cartItems);
         cartTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        Label emptyCartLabel = new Label("CART IS EMPTY // ADD TRACKS FROM THE STORE");
+        emptyCartLabel.getStyleClass().add("caption");
+        cartTable.setPlaceholder(emptyCartLabel);
 
         Label totalLabel = new Label(String.format("Cart Total: RM %.2f", calculateCartTotal()));
         totalLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
@@ -328,6 +377,7 @@ public class UserMainController {
                         return;
                     }
                     updateCartItemQuantity(item, newVal);
+                    persistCart();
                     cartTable.refresh();
                     totalLabel.setText(String.format("Cart Total: RM %.2f", calculateCartTotal()));
                 });
@@ -362,6 +412,7 @@ public class UserMainController {
             OrderItem sel = cartTable.getSelectionModel().getSelectedItem();
             if (sel != null) {
                 cartItems.remove(sel);
+                persistCart();
                 totalLabel.setText(String.format("Cart Total: RM %.2f", calculateCartTotal()));
             }
         });
@@ -370,6 +421,7 @@ public class UserMainController {
         clearBtn.setStyle("-fx-background-color: #FF6B6B; -fx-text-fill: white; -fx-padding: 8 16; -fx-font-weight: 600;");
         clearBtn.setOnAction(e -> {
             cartItems.clear();
+            persistCart();
             dialog.close();
         });
 
@@ -377,24 +429,27 @@ public class UserMainController {
         checkoutBtn.setStyle("-fx-background-color: #FFFFFF; -fx-text-fill: #000000; -fx-padding: 8 20; -fx-font-weight: 600;");
 
         checkoutBtn.setOnAction(e -> {
-            try {
-                int customerId = resolveCustomerIdForCurrentUser();
-                int userId = SessionManager.getCurrentUser().getId();
-
-                Order newOrder = orderService.createOrder(customerId, userId, cartItems, null);
-                newOrder.setStatus("PENDING");
-                orderDao.update(newOrder);
-
-                cartItems.clear();
-                loadAllTracks();
-                dialog.close();
-
-                showInfo("Checkout successful!\nPlease go to 'View Orders' to complete your payment.");
-
-            } catch (Exception ex) {
-                LOGGER.log(Level.SEVERE, "Checkout failed", ex);
-                showError("Checkout failed: " + ex.getMessage());
-            }
+            checkoutBtn.setDisable(true); // prevent double-submit while the order is being created
+            Async.run("checkout", () -> {
+                        int customerId = resolveCustomerIdForCurrentUser();
+                        int userId = SessionManager.getCurrentUser().getId();
+                        Order newOrder = orderService.createOrder(customerId, userId, cartItems, null);
+                        orderDao.update(newOrder);
+                        return newOrder;
+                    },
+                    newOrder -> {
+                        checkoutBtn.setDisable(false);
+                        cartItems.clear();
+                        CartStore.clear(SessionManager.getCurrentUser().getId());
+                        loadAllTracks(); // refresh stock badges
+                        dialog.close();
+                        Toast.show(trackGrid.getScene(),
+                                "Order #" + newOrder.getId() + " created. Go to VIEW ORDERS to pay.");
+                    },
+                    ex -> {
+                        checkoutBtn.setDisable(false);
+                        showError("Checkout failed: " + ex.getMessage());
+                    });
         });
 
         Button closeBtn = new Button("Close");
@@ -612,7 +667,8 @@ public class UserMainController {
                 }
                 item.setQuantity(newQty);
                 item.setLineTotal(sel.getPrice().multiply(BigDecimal.valueOf(newQty)));
-                showInfo("Added to cart. Total: " + newQty);
+                persistCart();
+                Toast.show(trackGrid.getScene(), "Added to cart. Total: " + newQty);
                 return;
             }
         }
@@ -623,7 +679,15 @@ public class UserMainController {
         newItem.setUnitPrice(sel.getPrice());
         newItem.setLineTotal(sel.getPrice().multiply(BigDecimal.valueOf(safeQty)));
         cartItems.add(newItem);
-        showInfo("Added " + safeQty + " of '" + sel.getTitle() + "' to cart.");
+        persistCart();
+        Toast.show(trackGrid.getScene(), "Added " + safeQty + " of '" + sel.getTitle() + "' to cart.");
+    }
+
+    // save the cart so it survives an application restart
+    private void persistCart() {
+        if (SessionManager.getCurrentUser() != null) {
+            CartStore.save(SessionManager.getCurrentUser().getId(), cartItems);
+        }
     }
 
     private void showOverlayDialog(VBox content, double width, double height) {
@@ -657,26 +721,53 @@ public class UserMainController {
     }
 
     private void loadAllTracks() {
-        try {
-            trackData.setAll(trackDao.findAllActive());
-        } catch (SQLException e) {
-            LOGGER.log(Level.SEVERE, "Load tracks failed", e);
-            showError("Load failed: " + e.getMessage());
+        Async.run("load-tracks", trackDao::findAllActive,
+                tracks -> {
+                    allTracksCache = tracks;
+                    refreshGenreFilter();
+                    applyFilters();
+                },
+                ex -> showError("Load failed: " + ex.getMessage()));
+    }
+
+    // rebuild the genre dropdown from the cached catalog without losing the current selection
+    private void refreshGenreFilter() {
+        String previous = genreFilter.getValue();
+        Set<String> genres = new LinkedHashSet<>();
+        genres.add("All Genres");
+        for (Track t : allTracksCache) {
+            if (t.getGenre() != null && !t.getGenre().isBlank()) {
+                genres.add(t.getGenre().trim());
+            }
         }
+        genreFilter.getItems().setAll(genres);
+        genreFilter.setValue(previous != null && genres.contains(previous) ? previous : "All Genres");
     }
 
     private int resolveCustomerIdForCurrentUser() throws SQLException {
-        if (SessionManager.getCurrentUser() == null) {
+        User current = SessionManager.getCurrentUser();
+        if (current == null) {
             throw new IllegalArgumentException("No logged-in user.");
         }
-        String uname = SessionManager.getCurrentUser().getUsername();
+
+        // 1) direct link via user_id (authoritative)
+        Customer linked = customerDao.findByUserId(current.getId());
+        if (linked != null) {
+            return linked.getId();
+        }
+
+        // 2) legacy rows: match by name, then create the missing link
         for (Customer c : customerDao.findAll()) {
-            if (uname.equalsIgnoreCase(c.getName())) {
+            if (current.getUsername().equalsIgnoreCase(c.getName())) {
+                customerDao.linkToUser(c.getId(), current.getId());
                 return c.getId();
             }
         }
+
+        // 3) first purchase ever: create a linked customer
         Customer nc = new Customer();
-        nc.setName(uname);
+        nc.setUserId(current.getId());
+        nc.setName(current.getUsername());
         int id = customerDao.create(nc);
         if (id <= 0) {
             throw new SQLException("Failed to create customer.");

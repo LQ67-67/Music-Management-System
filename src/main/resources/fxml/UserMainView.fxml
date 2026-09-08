@@ -5,6 +5,7 @@
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.FlowPane?>
 <?import javafx.scene.layout.HBox?>
@@ -45,6 +46,8 @@
                         <children>
                             <Label text="🔍 SEARCH:"/>
                             <TextField fx:id="searchField" promptText="Title, artist, album..." HBox.hgrow="ALWAYS" styleClass="neo-input" prefHeight="40.0"/>
+                            <Label text="GENRE:"/>
+                            <ComboBox fx:id="genreFilter" prefWidth="150" prefHeight="40.0"/>
                             <Button text="🔎 SEARCH" onAction="#handleSearch" styleClass="neo-button-primary" prefHeight="40.0"/>
                         </children>
                     </HBox>

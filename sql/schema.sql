@@ -20,9 +20,10 @@ CREATE TABLE users (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- customer table (can be associated with users or used separately)
+-- customer table (can be associated with users or used separately; user_id NULL/0 = unlinked)
 CREATE TABLE customers (
     id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NULL,
     name VARCHAR(100) NOT NULL,
     email VARCHAR(100),
     phone VARCHAR(50),
@@ -90,9 +91,10 @@ INSERT INTO users (username, password_hash, role) VALUES
 ('admin', 'admin', 'ADMIN'),
 ('user1', 'user1', 'USER');
 
-INSERT INTO customers (name, email, phone, city) VALUES
-('Skim', 'skim@gmail.com', '012-3456789', 'Kuala Lumpur'),
-('Lando Norris', 'norries@soton.ac.uk', '013-9876543', 'Penang');
+-- Skim is linked to the user1 login account (id 2)
+INSERT INTO customers (user_id, name, email, phone, city) VALUES
+(2, 'Skim', 'skim@gmail.com', '012-3456789', 'Kuala Lumpur'),
+(NULL, 'Lando Norris', 'norries@soton.ac.uk', '013-9876543', 'Penang');
 
 INSERT INTO tracks (title, artist, album, genre, price, stock_qty) VALUES
 ('1. Until Tomorrow''s Twilight', '北川勝利', 'ARIA The OVA ~ARIETTA~', 'Anime',  3.50, 100),

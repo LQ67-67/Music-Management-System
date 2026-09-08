@@ -92,4 +92,151 @@ public class OrderServiceTest {
             fail("Database error: " + e.getMessage());
         }
     }
+
+    @Test // adjusting an item's quantity must move stock accordingly and recompute the order total
+    public void testAdjustOrderItemQuantity() {
+        try {
+            int trackId = trackDao.create(testTrack("Adjust Qty Track", 10));
+
+            Order order = orderService.createOrder(1, 1, List.of(cartItem(trackId, 4)), "Test City");
+            int itemId = orderItemDao.findByOrder(order.getId()).get(0).getId();
+
+            assertEquals(6, trackDao.findById(trackId).getStockQty()); // 10 - 4
+
+            orderService.adjustOrderItemQuantity(order.getId(), itemId, 9); // +5 more
+            assertEquals(1, trackDao.findById(trackId).getStockQty());
+            assertEquals(new BigDecimal("89.10"), orderDao.findById(order.getId()).getTotalAmount()); // 9 * 9.90
+
+            orderService.adjustOrderItemQuantity(order.getId(), itemId, 2); // release 7 back
+            assertEquals(8, trackDao.findById(trackId).getStockQty());
+
+            // requesting more than available stock must fail without any side effect
+            assertThrows(IllegalArgumentException.class,
+                    () -> orderService.adjustOrderItemQuantity(order.getId(), itemId, 20));
+            assertEquals(8, trackDao.findById(trackId).getStockQty());
+            assertEquals(2, orderItemDao.findByOrder(order.getId()).get(0).getQuantity());
+
+            cleanupOrder(order.getId(), trackId);
+        } catch (SQLException e) {
+            fail("Database error: " + e.getMessage());
+        }
+    }
+
+    @Test // removing an item returns its units to stock and empties the order total
+    public void testRemoveOrderItem() {
+        try {
+            int trackId = trackDao.create(testTrack("Remove Item Track", 5));
+            Order order = orderService.createOrder(1, 1, List.of(cartItem(trackId, 3)), "Test City");
+            int itemId = orderItemDao.findByOrder(order.getId()).get(0).getId();
+
+            orderService.removeOrderItem(order.getId(), itemId);
+
+            assertEquals(5, trackDao.findById(trackId).getStockQty()); // all units returned
+            assertTrue(orderItemDao.findByOrder(order.getId()).isEmpty());
+            assertEquals(0, orderDao.findById(order.getId()).getTotalAmount().compareTo(BigDecimal.ZERO));
+
+            cleanupOrder(order.getId(), trackId);
+        } catch (SQLException e) {
+            fail("Database error: " + e.getMessage());
+        }
+    }
+
+    @Test // adding an item to a PENDING order consumes stock at the current price
+    public void testAddOrderItem() {
+        try {
+            int trackId = trackDao.create(testTrack("Add Item Track", 4));
+            Order order = orderService.createOrder(1, 1, List.of(cartItem(trackId, 2)), "Test City");
+
+            orderService.addOrderItem(order.getId(), trackId, 1);
+
+            assertEquals(1, trackDao.findById(trackId).getStockQty());
+            assertEquals(2, orderItemDao.findByOrder(order.getId()).size());
+            assertEquals(new BigDecimal("29.70"), orderDao.findById(order.getId()).getTotalAmount()); // 2 + 1 units
+
+            // stock is exhausted — a further add must be rejected
+            assertThrows(IllegalArgumentException.class,
+                    () -> orderService.addOrderItem(order.getId(), trackId, 5));
+
+            cleanupOrder(order.getId(), trackId);
+        } catch (SQLException e) {
+            fail("Database error: " + e.getMessage());
+        }
+    }
+
+    @Test // cancelling an order must restore the reserved stock and mark it CANCELLED
+    public void testCancelOrderRestoresStock() {
+        try {
+            int trackId = trackDao.create(testTrack("Cancel Track", 10));
+            Order order = orderService.createOrder(1, 1, List.of(cartItem(trackId, 4)), "Test City");
+            assertEquals(6, trackDao.findById(trackId).getStockQty());
+
+            orderService.cancelOrder(order.getId());
+
+            Order cancelled = orderDao.findById(order.getId());
+            assertEquals("CANCELLED", cancelled.getStatus());
+            assertEquals(10, trackDao.findById(trackId).getStockQty());
+
+            // cancelling again is a no-op, cancelling a PAID order is refused
+            assertDoesNotThrow(() -> orderService.cancelOrder(order.getId()));
+            Order paid = orderService.createOrder(1, 1, List.of(cartItem(trackId, 1)), null);
+            orderDao.updateStatusAndCity(paid.getId(), "PAID", null);
+            assertThrows(IllegalStateException.class, () -> orderService.cancelOrder(paid.getId()));
+
+            cleanupOrder(order.getId(), trackId);
+            cleanupOrder(paid.getId(), trackId);
+        } catch (SQLException e) {
+            fail("Database error: " + e.getMessage());
+        }
+    }
+
+    @Test // deleting a live order returns stock and removes the rows; PAID orders are protected
+    public void testDeleteOrder() {
+        try {
+            int trackId = trackDao.create(testTrack("Delete Track", 7));
+            Order order = orderService.createOrder(1, 1, List.of(cartItem(trackId, 2)), "Test City");
+
+            orderService.deleteOrder(order.getId());
+
+            assertNull(orderDao.findById(order.getId()));
+            assertTrue(orderItemDao.findByOrder(order.getId()).isEmpty());
+            assertEquals(7, trackDao.findById(trackId).getStockQty());
+
+            Order paid = orderService.createOrder(1, 1, List.of(cartItem(trackId, 1)), null);
+            orderDao.updateStatusAndCity(paid.getId(), "PAID", null);
+            assertThrows(IllegalStateException.class, () -> orderService.deleteOrder(paid.getId()));
+            assertNotNull(orderDao.findById(paid.getId()));
+
+            cleanupOrder(paid.getId(), trackId);
+        } catch (SQLException e) {
+            fail("Database error: " + e.getMessage());
+        }
+    }
+
+    // ---- helpers ----
+
+    private Track testTrack(String title, int stock) {
+        Track track = new Track();
+        track.setTitle(title);
+        track.setArtist("Test Artist");
+        track.setAlbum("Test Album");
+        track.setGenre("Test");
+        track.setPrice(new BigDecimal("9.90"));
+        track.setStockQty(stock);
+        return track;
+    }
+
+    private OrderItem cartItem(int trackId, int quantity) {
+        OrderItem item = new OrderItem();
+        item.setTrackId(trackId);
+        item.setQuantity(quantity);
+        item.setUnitPrice(new BigDecimal("9.90"));
+        item.setLineTotal(new BigDecimal("9.90").multiply(BigDecimal.valueOf(quantity)));
+        return item;
+    }
+
+    private void cleanupOrder(int orderId, int trackId) throws SQLException {
+        orderItemDao.deleteByOrder(orderId);
+        orderDao.delete(orderId);
+        trackDao.delete(trackId);
+    }
 }

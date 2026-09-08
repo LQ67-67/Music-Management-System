@@ -1,0 +1,5 @@
+# Local database connection settings (copy to db.properties and adjust; db.properties is git-ignored)
+# Can also be provided via env vars DB_URL / DB_USER / DB_PASSWORD or -Ddb.url / -Ddb.user / -Ddb.password
+db.url=jdbc:mysql://localhost:3306/music_library
+db.user=root
+db.password=

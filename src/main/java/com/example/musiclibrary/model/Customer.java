@@ -2,6 +2,7 @@ package com.example.musiclibrary.model;
 
 public class Customer {
     private int id;
+    private int userId; // linked login user, 0 = not linked
     private String name;
     private String email;
     private String phone;
@@ -13,6 +14,14 @@ public class Customer {
 
     public void setId(int id) {
         this.id = id;
+    }
+
+    public int getUserId() {
+        return userId;
+    }
+
+    public void setUserId(int userId) {
+        this.userId = userId;
     }
 
     public String getName() {
